@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000"
+    >
+
+    <com.google.android.exoplayer2.ui.PlayerView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:id="@+id/dd_player_view"
+        app:use_controller="false"
+
+        />
+
+<!--    <TextView-->
+<!--        android:id="@+id/danmu_textView"-->
+<!--        android:layout_width="0dp"-->
+<!--        android:layout_height="0dp"-->
+<!--        android:background="#99000000"-->
+<!--        android:textColor="#ffffff"-->
+<!--        app:layout_constraintBottom_toBottomOf="parent"-->
+<!--        app:layout_constraintEnd_toEndOf="parent"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toTopOf="parent"-->
+<!--        app:layout_constraintHeight_percent=".8"-->
+<!--        app:layout_constraintHorizontal_bias="0"-->
+<!--        app:layout_constraintVertical_bias="0"-->
+<!--        app:layout_constraintWidth_percent=".2"-->
+<!--        android:scrollbars="vertical"-->
+<!--        android:singleLine="false"-->
+<!--        android:maxLines="40"-->
+<!--        />-->
+    <ListView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintHeight_percent=".8"
+        app:layout_constraintHorizontal_bias="0"
+        app:layout_constraintVertical_bias="0"
+        app:layout_constraintWidth_percent=".2"
+        android:id="@+id/danmu_listView"
+        android:background="#99000000"
+        />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="#99000000"
+        android:orientation="horizontal"
+        android:id="@+id/player_control_bar"
+        >
+        <Button
+            android:layout_width="30dp"
+            android:layout_height="match_parent"
+            android:padding="0dp"
+            android:background="@android:color/transparent"
+            android:textColor="#ffffff"
+            android:text="R"
+            />
+        <Button
+            android:layout_width="30dp"
+            android:layout_height="match_parent"
+            android:padding="0dp"
+            android:background="@android:color/transparent"
+            android:textColor="#ffffff"
+
+            android:text="V"
+            />
+        <Button
+            android:layout_width="30dp"
+            android:layout_height="match_parent"
+            android:padding="0dp"
+            android:background="@android:color/transparent"
+            android:textColor="#ffffff"
+
+            android:text="D"
+            />
+        <Button
+            android:layout_width="30dp"
+            android:layout_height="match_parent"
+            android:padding="0dp"
+            android:background="@android:color/transparent"
+            android:textColor="#ffffff"
+
+            android:text="Q"
+            />
+        <Button
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="#"
+            android:padding="0dp"
+            android:paddingStart="4dp"
+            android:background="@android:color/transparent"
+            android:textAlignment="textStart"
+            android:id="@+id/player_name_btn"
+            android:textColor="#ffffff"
+            android:textAllCaps="false"
+            />
+    </LinearLayout>
+</androidx.constraintlayout.widget.ConstraintLayout>
