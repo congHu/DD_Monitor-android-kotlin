@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/qn_10000"
+        android:title="原画"
+        />
+    <item
+        android:id="@+id/qn_400"
+        android:title="蓝光"
+        />
+    <item
+        android:id="@+id/qn_250"
+        android:title="超清"
+        />
+    <item
+        android:id="@+id/qn_150"
+        android:title="高清"
+        />
+    <item
+        android:id="@+id/qn_80"
+        android:title="流畅"
+        />
+</menu>

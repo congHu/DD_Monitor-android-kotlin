@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:title="(长按卡片可拖动)"
+        />
+    <item
+        android:id="@+id/copy_id"
+        android:title="复制id"
+        />
+    <item
+        android:id="@+id/open_live"
+        android:title="跳转直播间"
+        />
+    <item
+        android:id="@+id/delete_item"
+        android:title="删除"
+        />
+</menu>

@@ -7,6 +7,7 @@ import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
+import android.widget.Button
 import android.widget.GridView
 import android.widget.ImageView
 import com.hyc.dd_monitor.R
@@ -59,6 +60,10 @@ class LayoutOptionsDialog(context: Context) : Dialog(context) {
         gv.setOnItemClickListener { adapterView, view, i, l ->
             Log.d("layout item", i.toString())
             onLayoutOptionsSelectedListener(i+1)
+            dismiss()
+        }
+
+        findViewById<Button>(R.id.layout_dialog_cancel_btn).setOnClickListener {
             dismiss()
         }
     }

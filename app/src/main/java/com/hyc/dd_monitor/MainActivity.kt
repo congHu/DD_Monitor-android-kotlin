@@ -1,9 +1,6 @@
 package com.hyc.dd_monitor
 
-import android.content.ClipData
-import android.content.ClipDescription
-import android.content.DialogInterface
-import android.content.SharedPreferences
+import android.content.*
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.graphics.*
@@ -11,10 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.InputType
 import android.util.Log
-import android.view.DragEvent
-import android.view.View
-import android.view.ViewGroup
-import android.view.WindowManager
+import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -28,6 +22,8 @@ import com.squareup.picasso.Picasso
 import okhttp3.*
 import org.json.JSONObject
 import java.io.IOException
+import java.util.*
+import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity() {
 
@@ -39,11 +35,22 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var uplistview: ListView
 
+    lateinit var cancelDragView: TextView
+
+    var autoSleepMinutes: Int = 0
+    var autoSleepTimer: Timer? = null
+
+    lateinit var timerTextView: TextView
+
+    override fun onResume() {
+        super.onResume()
+        Log.d("resume", "onResume")
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         Log.d("orientation", "onCreate: ")
 
@@ -52,6 +59,9 @@ class MainActivity : AppCompatActivity() {
 
         val dd = findViewById<LinearLayout>(R.id.stack_view)
         ddLayout = DDLayout(this)
+        ddLayout.onCardDropListener = {
+            cancelDragView.visibility = View.GONE
+        }
         dd.addView(ddLayout)
 
         getSharedPreferences("sp", MODE_PRIVATE).getString("uplist", "")?.let {
@@ -112,16 +122,25 @@ class MainActivity : AppCompatActivity() {
                     if (upInfo.isLive) {
                         isLiveCover.visibility = View.GONE
                     }else{
+                        isLiveCover.visibility = View.VISIBLE
                         isLiveCover.text = "未开播"
                     }
-                }else{
-//                    loadUpInfo(roomId)
                 }
 
                 return view
             }
 
         }
+
+        cancelDragView = findViewById(R.id.cancel_drag_view)
+        cancelDragView.setOnDragListener { view, dragEvent ->
+            if (dragEvent.action == DragEvent.ACTION_DROP) {
+                cancelDragView.visibility = View.GONE
+            }
+            return@setOnDragListener true
+        }
+
+        // 卡片拖拽
         uplistview.setOnItemLongClickListener { adapterView, view, i, l ->
             Log.d("long click", i.toString())
             view.startDragAndDrop(
@@ -129,14 +148,139 @@ class MainActivity : AppCompatActivity() {
                 View.DragShadowBuilder(view), null, View.DRAG_FLAG_GLOBAL
             )
             drawer.closeDrawers()
+            cancelDragView.visibility = View.VISIBLE
             return@setOnItemLongClickListener true
         }
 
-        findViewById<Button>(R.id.about_btn).setOnClickListener {
-            Toast.makeText(this, "功能待完善，目前版本0.1.0", Toast.LENGTH_LONG).show()
+        uplistview.setOnCreateContextMenuListener { contextMenu, view, contextMenuInfo ->
+            contextMenu.add("复制id")
+            contextMenu.add("跳转直播间")
+            contextMenu.add("删除")
         }
 
-        findViewById<Button>(R.id.landscape_btn).setOnClickListener {
+        uplistview.setOnItemClickListener { adapterView, view, i, l ->
+            val pop = PopupMenu(this, view)
+            pop.menuInflater.inflate(R.menu.up_item_card, pop.menu)
+            pop.setOnMenuItemClickListener {
+                if (it.itemId == R.id.delete_item) {
+                    Log.d("menu", "delete")
+                    uplist.removeAt(i)
+                    uplistview.invalidateViews()
+                    getSharedPreferences("sp", MODE_PRIVATE).edit {
+                        this.putString("uplist", uplist.joinToString(" ")).apply()
+                    }
+                }
+                if (it.itemId == R.id.open_live) {
+                    val intent = Intent()
+                    intent.data = Uri.parse("bilibili://live/${uplist[i]}")
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(intent)
+                }
+                return@setOnMenuItemClickListener true
+            }
+            pop.show()
+
+        }
+
+        val typeface = Typeface.createFromAsset(assets, "iconfont.ttf")
+
+        val refreshBtn = findViewById<Button>(R.id.refresh_btn)
+        refreshBtn.typeface = typeface
+        refreshBtn.setOnClickListener {
+            ddLayout.reloadLayout()
+        }
+
+        val volumeBtn = findViewById<Button>(R.id.volume_btn)
+        volumeBtn.typeface = typeface
+
+        val danmuBtn = findViewById<Button>(R.id.danmu_btn)
+        danmuBtn.typeface = typeface
+
+        val qnBtn = findViewById<Button>(R.id.qn_btn)
+        qnBtn.setOnClickListener {
+            val pop = PopupMenu(this, qnBtn)
+            pop.menuInflater.inflate(R.menu.qn_menu, pop.menu)
+            pop.setOnMenuItemClickListener {
+                var newQn = 80
+                if (it.itemId == R.id.qn_10000) {
+                    newQn = 10000
+                }
+                if (it.itemId == R.id.qn_400) {
+                    newQn = 400
+                }
+                if (it.itemId == R.id.qn_250) {
+                    newQn = 250
+                }
+                if (it.itemId == R.id.qn_150) {
+                    newQn = 150
+                }
+                if (it.itemId == R.id.qn_80) {
+                    newQn = 80
+                }
+
+                for (p in ddLayout.players) {
+                    p.qn = newQn
+                }
+                return@setOnMenuItemClickListener true
+            }
+            pop.show()
+        }
+
+        val aboutBtn = findViewById<Button>(R.id.about_btn)
+        aboutBtn.typeface = typeface
+        aboutBtn.setOnClickListener {
+            val ver = packageManager.getPackageInfo(packageName, 0).versionName
+            AlertDialog.Builder(this)
+                .setTitle("DD监控室 v${ver} by CongHu")
+                .setMessage("· 点击右上角“UP”按钮添加UP主，长按拖动到播放器窗口内。\n· 观看多个直播时请注意带宽网速、流量消耗、电池电量、机身发热、系统卡顿等软硬件环境问题。\n· 本软件开源，遵循LGPL-2.1协议。\n· 本软件仅读取公开API数据，不涉及账号登录，欢迎查看源码进行监督。因此，本软件不支持弹幕互动、直播打赏等功能，若要使用请前往原版B站APP。\n· 直播流、UP主信息、以及个人公开的关注列表数据来自B站公开API，最终解释权归B站所有。")
+                .setNegativeButton("关闭", null)
+                .show()
+        }
+
+        timerTextView = findViewById(R.id.timer_textview)
+
+        val timerBtn = findViewById<Button>(R.id.timer_btn)
+        timerBtn.typeface = typeface
+        timerBtn.setOnClickListener {
+            val pop = PopupMenu(this, qnBtn)
+            pop.menuInflater.inflate(R.menu.timer_menu, pop.menu)
+            pop.setOnMenuItemClickListener {
+                if (it.itemId == R.id.timer_set_15) {
+                    autoSleepTimerSet(15)
+                }
+                if (it.itemId == R.id.timer_set_30) {
+                    autoSleepTimerSet(30)
+                }
+                if (it.itemId == R.id.timer_set_60) {
+                    autoSleepTimerSet(60)
+                }
+                if (it.itemId == R.id.timer_custom) {
+                    val et = EditText(this)
+                    et.inputType = InputType.TYPE_CLASS_NUMBER
+                    AlertDialog.Builder(this)
+                        .setTitle("定时关闭（分钟）")
+                        .setView(et)
+                        .setPositiveButton("确定") { _, _ ->
+                            et.text.toString().toIntOrNull()?.let { min ->
+                                if (min in 1..99)
+                                    autoSleepTimerSet(min)
+                            }
+                        }
+                        .setNegativeButton("取消",null)
+                        .show()
+                    et.requestFocus()
+                }
+                if (it.itemId == R.id.timer_cancel) {
+                    autoSleepTimerSet(0)
+                }
+                return@setOnMenuItemClickListener true
+            }
+            pop.show()
+        }
+
+        val landScapeBtn = findViewById<Button>(R.id.landscape_btn)
+        landScapeBtn.typeface = typeface
+        landScapeBtn.setOnClickListener {
 
 //            for (p in ddLayout.players) {
 //                p.player?.stop()
@@ -149,10 +293,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<Button>(R.id.layout_btn).setOnClickListener {
+        val layoutBtn = findViewById<Button>(R.id.layout_btn)
+        layoutBtn.typeface = typeface
+        layoutBtn.setOnClickListener {
             val dialog = LayoutOptionsDialog(this)
             dialog.onLayoutOptionsSelectedListener = {
                 ddLayout.layoutId = it
+                getSharedPreferences("sp", MODE_PRIVATE).edit {
+                    this.putInt("layout", it).apply()
+                }
             }
             dialog.show()
         }
@@ -191,7 +340,7 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         uplist.add(0, realRoomId)
-                        val editor = getSharedPreferences("sp", MODE_PRIVATE).edit {
+                        getSharedPreferences("sp", MODE_PRIVATE).edit {
                             this.putString("uplist", uplist.joinToString(" ")).apply()
                         }
 //                        Log.d("getSharedPreferences", uplist.joinToString(" "))
@@ -204,6 +353,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 .setNegativeButton("取消",null)
                 .show()
+            et.requestFocus()
         }
 
     }
@@ -271,6 +421,40 @@ class MainActivity : AppCompatActivity() {
             }
 
         })
+    }
+
+    fun autoSleepTimerSet(min: Int) {
+        autoSleepMinutes = min
+        autoSleepTimer?.cancel()
+        autoSleepTimer = null
+        if (autoSleepMinutes <= 0) {
+            timerTextView.text = ""
+            return
+        }
+        timerTextView.text = "$autoSleepMinutes"
+
+
+        autoSleepTimer = Timer()
+        autoSleepTimer!!.schedule(object : TimerTask() {
+            override fun run() {
+                autoSleepMinutes -= 1
+                runOnUiThread {
+                    timerTextView.text = "$autoSleepMinutes"
+                }
+                if (autoSleepMinutes == 0) {
+                    runOnUiThread {
+                        timerTextView.text = ""
+                        autoSleepTimer?.cancel()
+                        for (p in ddLayout.players) {
+                            p.player?.pause()
+                        }
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    }
+
+                }
+            }
+
+        }, 60000)
     }
 
 }

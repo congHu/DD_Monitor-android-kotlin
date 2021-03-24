@@ -6,6 +6,8 @@ import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.edit
 import androidx.core.view.children
 import com.hyc.dd_monitor.R
 
@@ -18,9 +20,12 @@ class DDLayout(context: Context?) : LinearLayout(context) {
 
     var players: ArrayList<DDPlayer>
 
+    var onCardDropListener: (() -> Unit)? = null
+
     init {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 //        this.layoutId = 2
+
 
         this.players = ArrayList()
 
@@ -49,11 +54,22 @@ class DDLayout(context: Context?) : LinearLayout(context) {
                 val temp = players[drag]
                 players[drag] = players[drop]
                 players[drop] = temp
+
+                context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
+                    this.putString("roomId$drop", players[drop].roomId).apply()
+                }
+            }
+            p.onCardDropListener = {
+                onCardDropListener?.invoke()
             }
             this.players.add(p)
         }
 
-        reloadLayout()
+//        reloadLayout()
+
+        context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getInt("layout", 4)?.let {
+            this.layoutId = it
+        }
     }
 
     var stackview: View? = null
@@ -75,6 +91,13 @@ class DDLayout(context: Context?) : LinearLayout(context) {
             val p = players[i-1]
             (p.parent as ViewGroup?)?.removeView(p)
             v?.addView(p)
+
+            if (v != null) {
+                val roomId = context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getString("roomId${i-1}", null)
+                p.roomId = roomId
+            }else{
+                p.roomId = null
+            }
         }
 
 
