@@ -64,6 +64,7 @@
                 android:background="@android:color/transparent"
                 android:textColor="#ffffff"
                 android:text="I"
+                android:id="@+id/about_btn"
                 />
             <Button
                 android:layout_width="40dp"

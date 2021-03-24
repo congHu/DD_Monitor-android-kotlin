@@ -132,6 +132,10 @@ class MainActivity : AppCompatActivity() {
             return@setOnItemLongClickListener true
         }
 
+        findViewById<Button>(R.id.about_btn).setOnClickListener {
+            Toast.makeText(this, "功能待完善，目前版本0.1.0", Toast.LENGTH_LONG).show()
+        }
+
         findViewById<Button>(R.id.landscape_btn).setOnClickListener {
 
 //            for (p in ddLayout.players) {
