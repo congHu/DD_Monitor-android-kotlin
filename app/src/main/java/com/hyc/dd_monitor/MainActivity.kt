@@ -22,6 +22,7 @@ import com.squareup.picasso.Picasso
 import okhttp3.*
 import org.json.JSONObject
 import java.io.IOException
+import java.net.URL
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -37,15 +38,75 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var cancelDragView: TextView
 
+    lateinit var drawer: DrawerLayout
+    lateinit var drawerContent: LinearLayout
+
     var autoSleepMinutes: Int = 0
     var autoSleepTimer: Timer? = null
 
     lateinit var timerTextView: TextView
 
+    var lastClipboard: String? = null
     override fun onResume() {
         super.onResume()
         Log.d("resume", "onResume")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        window.decorView.post {
+            (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager)?.let {
+                it.primaryClip?.let { clip ->
+                    Log.d("clipboard", clip.itemCount.toString())
+                    if (clip.itemCount == 0) return@post
+                    clip.getItemAt(0)?.let { item ->
+                        val clipboard = item.text.toString()
+                        if (clipboard == lastClipboard) {
+                            return@post
+                        }
+                        Log.d("clipboard", clipboard)
+                        lastClipboard = clipboard
+                        try {
+                            val url = URL(clipboard)
+                            if (url.host == "live.bilibili.com") {
+                                Log.d("clipboard", url.path)
+                                val urlId = url.path.replace("/", "")
+                                urlId.toIntOrNull()?.let { roomId ->
+                                    AlertDialog.Builder(this)
+                                        .setTitle("添加id $roomId ?")
+                                        .setPositiveButton("是") { _, _ ->
+                                            if (uplist.contains(roomId.toString())) {
+                                                Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show()
+                                                return@setPositiveButton
+                                            }
+                                            loadUpInfo(roomId.toString()) { realRoomId ->
+                                                runOnUiThread {
+                                                    if (uplist.contains(realRoomId)) {
+                                                        Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show()
+                                                        return@runOnUiThread
+                                                    }
+
+                                                    uplist.add(0, realRoomId)
+                                                    getSharedPreferences("sp", MODE_PRIVATE).edit {
+                                                        this.putString("uplist", uplist.joinToString(" ")).apply()
+                                                    }
+                                                    uplistview.invalidateViews()
+                                                    drawer.openDrawer(drawerContent)
+                                                    for (up in uplist) {
+                                                        loadUpInfo(up)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        .setNegativeButton("否", null)
+                                        .show()
+                                    it.setPrimaryClip(ClipData.newPlainText("",""))
+                                }
+                            }
+                        }catch (_:Exception) {}
+                    }
+                }
+            }
+        }
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,8 +115,8 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("orientation", "onCreate: ")
 
-        val drawer = findViewById<DrawerLayout>(R.id.main_drawer)
-        val drawerContent = findViewById<LinearLayout>(R.id.drawer_content)
+        drawer = findViewById(R.id.main_drawer)
+        drawerContent = findViewById(R.id.drawer_content)
 
         val dd = findViewById<LinearLayout>(R.id.stack_view)
         ddLayout = DDLayout(this)
