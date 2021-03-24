@@ -6,5 +6,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:id="@+id/danmu_textView"
+        android:textColor="#fff"
         />
 </LinearLayout>

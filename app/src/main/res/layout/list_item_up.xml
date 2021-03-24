@@ -65,6 +65,7 @@
                     android:background="#90000000"
                     android:id="@+id/up_uname_textview"
                     android:textSize="11dp"
+                    android:textColor="#fff"
                     />
                 <TextView
                     android:layout_width="match_parent"
@@ -75,6 +76,7 @@
                     android:textSize="9dp"
                     android:maxLines="1"
                     android:ellipsize="end"
+                    android:textColor="#aaa"
                     />
             </LinearLayout>
         </LinearLayout>

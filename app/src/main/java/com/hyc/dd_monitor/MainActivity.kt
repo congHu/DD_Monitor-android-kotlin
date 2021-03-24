@@ -41,6 +41,10 @@ class MainActivity : AppCompatActivity() {
     lateinit var drawer: DrawerLayout
     lateinit var drawerContent: LinearLayout
 
+    lateinit var volumeBtn: Button
+
+    var isGlobalMuted = false
+
     var autoSleepMinutes: Int = 0
     var autoSleepTimer: Timer? = null
 
@@ -232,10 +236,16 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 if (it.itemId == R.id.open_live) {
-                    val intent = Intent()
-                    intent.data = Uri.parse("bilibili://live/${uplist[i]}")
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    startActivity(intent)
+                    try {
+                        val intent = Intent()
+                        intent.data = Uri.parse("bilibili://live/${uplist[i]}")
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                    }catch (_:Exception) {
+                        val intent = Intent()
+                        intent.data = Uri.parse("https://live.bilibili.com/${uplist[i]}")
+                        startActivity(intent)
+                    }
                 }
                 return@setOnMenuItemClickListener true
             }
@@ -251,8 +261,15 @@ class MainActivity : AppCompatActivity() {
             ddLayout.reloadLayout()
         }
 
-        val volumeBtn = findViewById<Button>(R.id.volume_btn)
+        volumeBtn = findViewById<Button>(R.id.volume_btn)
         volumeBtn.typeface = typeface
+        volumeBtn.setOnClickListener {
+            isGlobalMuted = !isGlobalMuted
+            for (p in ddLayout.players) {
+                p.isGlobalMuted = isGlobalMuted
+            }
+            volumeBtn.text = if (isGlobalMuted) "\ue607" else "\ue606"
+        }
 
         val danmuBtn = findViewById<Button>(R.id.danmu_btn)
         danmuBtn.typeface = typeface
@@ -400,14 +417,15 @@ class MainActivity : AppCompatActivity() {
                             return@loadUpInfo
                         }
 
-                        uplist.add(0, realRoomId)
-                        getSharedPreferences("sp", MODE_PRIVATE).edit {
-                            this.putString("uplist", uplist.joinToString(" ")).apply()
-                        }
+
 //                        Log.d("getSharedPreferences", uplist.joinToString(" "))
 //                        editor.putString("uplist", uplist.joinToString(" "))
 //                        editor.commit()
                         runOnUiThread {
+                            uplist.add(0, realRoomId)
+                            getSharedPreferences("sp", MODE_PRIVATE).edit {
+                                this.putString("uplist", uplist.joinToString(" ")).apply()
+                            }
                             uplistview.invalidateViews()
                         }
                     }

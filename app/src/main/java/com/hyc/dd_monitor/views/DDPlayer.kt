@@ -75,6 +75,12 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var volumeBar: LinearLayout
     var volumeSlider: Slider
 
+    var isGlobalMuted = false
+        set(value) {
+            field = value
+            player?.volume = if (value) 0f else volumeSlider.value/100f
+        }
+
     var qnBtn: Button
 
     init {
@@ -131,10 +137,17 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     }
                 }
                 if (it.itemId == R.id.open_live) {
-                    val intent = Intent()
-                    intent.data = Uri.parse("bilibili://live/$roomId")
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    context.startActivity(intent)
+                    try {
+                        val intent = Intent()
+                        intent.data = Uri.parse("bilibili://live/$roomId")
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        context.startActivity(intent)
+                    }catch (_:Exception) {
+                        val intent = Intent()
+                        intent.data = Uri.parse("https://live.bilibili.com/$roomId")
+                        context.startActivity(intent)
+                    }
+
                 }
                 return@setOnMenuItemClickListener true
             }
@@ -213,7 +226,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
 
         volumeSlider.addOnChangeListener { slider, value, fromUser ->
-            player?.volume = value/100f
+            player?.volume = if (isGlobalMuted) 0f else value/100f
         }
 
         val muteBtn = findViewById<Button>(R.id.mute_btn)
@@ -221,7 +234,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         muteBtn.setOnClickListener {
             if (volumeSlider.value == 0f) {
                 volumeSlider.value = 50f
-                player?.volume = .5f
+                player?.volume = if (isGlobalMuted) 0f else .5f
             }else{
                 volumeSlider.value = 0f
                 player?.volume = 0f
@@ -306,13 +319,13 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 if (roomInfo.getInt("live_status") == 1) "" else "(未开播)"
                             val uname = anchorInfo.getString("uname")
 
-//                            handler.post {
-//                                playerNameBtn.text = "#$pid: $liveStatus$uname"
-//                            }
-                            val msg = Message()
-                            msg.what = 1
-                            msg.obj = "#${playerId + 1}: $liveStatus$uname"
-                            myHandler.sendMessage(msg)
+                            handler.post {
+                                playerNameBtn.text = "#${playerId + 1}: $liveStatus$uname"
+                            }
+//                            val msg = Message()
+//                            msg.what = 1
+//                            msg.obj = "#${playerId + 1}: $liveStatus$uname"
+//                            myHandler.sendMessage(msg)
 
 
                             OkHttpClient().newCall(
@@ -332,17 +345,17 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                                 .getString(
                                                     "url"
                                                 )
-//                                            handler.post {
-//                                                player = SimpleExoPlayer.Builder(context).build()
-//                                                playerView.player = player
-//                                                player!!.setMediaItem(MediaItem.fromUri(url))
-//                                                player!!.playWhenReady = true
-//                                                player!!.prepare()
-//                                            }
-                                            val msg2 = Message()
-                                            msg2.what = 2
-                                            msg2.obj = url
-                                            myHandler.sendMessage(msg2)
+                                            handler.post {
+                                                player = SimpleExoPlayer.Builder(context).build()
+                                                playerView.player = player
+                                                player!!.setMediaItem(MediaItem.fromUri(url))
+                                                player!!.playWhenReady = true
+                                                player!!.prepare()
+                                            }
+//                                            val msg2 = Message()
+//                                            msg2.what = 2
+//                                            msg2.obj = url
+//                                            myHandler.sendMessage(msg2)
 
                                         }
 
@@ -449,15 +462,18 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                                     val danmu =
                                                         jobj.getJSONArray("info").getString(1)
                                                     Log.d("danmu", "$value $danmu")
-//                                                    handler.post {
-//                                                        danmuTextView.text = "${danmuTextView.text}$danmu\n\n"
-//                                                        danmuTextView.scrollTo(0, danmuTextView.lineCount*danmuTextView.lineHeight - danmuTextView.layout.height)
-
-//                                                    }
-                                                    val msg3 = Message()
-                                                    msg3.what = 3
-                                                    msg3.obj = danmu
-                                                    myHandler.sendMessage(msg3)
+                                                    handler.post {
+                                                        if (danmuList.count() > 20) {
+                                                            danmuList.removeFirst()
+                                                        }
+                                                        danmuList.add(danmu)
+                                                        danmuListView.invalidateViews()
+                                                        danmuListView.setSelection(danmuListView.bottom)
+                                                    }
+//                                                    val msg3 = Message()
+//                                                    msg3.what = 3
+//                                                    msg3.obj = danmu
+//                                                    myHandler.sendMessage(msg3)
                                                 }
 
                                                 len += nextLen
@@ -509,27 +525,27 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             })
         }
 
-    val myHandler: Handler = object : Handler() {
-        override fun handleMessage(msg: Message) {
-            super.handleMessage(msg)
-            if (msg.what == 1) {
-                playerNameBtn.text = msg.obj as String
-            }
-            if (msg.what == 2) {
-                player = SimpleExoPlayer.Builder(context).build()
-                playerView.player = player
-                player!!.setMediaItem(MediaItem.fromUri(msg.obj as String))
-                player!!.playWhenReady = true
-                player!!.prepare()
-            }
-            if (msg.what == 3) {
-                if (danmuList.count() > 20) {
-                    danmuList.removeFirst()
-                }
-                danmuList.add(msg.obj as String)
-                danmuListView.invalidateViews()
-                danmuListView.setSelection(danmuListView.bottom)
-            }
-        }
-    }
+//    val myHandler: Handler = object : Handler() {
+//        override fun handleMessage(msg: Message) {
+//            super.handleMessage(msg)
+//            if (msg.what == 1) {
+//                playerNameBtn.text = msg.obj as String
+//            }
+//            if (msg.what == 2) {
+//                player = SimpleExoPlayer.Builder(context).build()
+//                playerView.player = player
+//                player!!.setMediaItem(MediaItem.fromUri(msg.obj as String))
+//                player!!.playWhenReady = true
+//                player!!.prepare()
+//            }
+//            if (msg.what == 3) {
+//                if (danmuList.count() > 20) {
+//                    danmuList.removeFirst()
+//                }
+//                danmuList.add(msg.obj as String)
+//                danmuListView.invalidateViews()
+//                danmuListView.setSelection(danmuListView.bottom)
+//            }
+//        }
+//    }
 }
