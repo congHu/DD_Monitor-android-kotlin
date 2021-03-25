@@ -22,6 +22,8 @@ class DDLayout(context: Context?) : LinearLayout(context) {
 
     var onCardDropListener: (() -> Unit)? = null
 
+    var layoutPlayerCount = 0
+
     init {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 //        this.layoutId = 2
@@ -50,13 +52,28 @@ class DDLayout(context: Context?) : LinearLayout(context) {
                 (players[drag].parent as ViewGroup?)?.removeView(players[drag])
                 dropView?.addView(players[drag])
                 players[drag].playerId = drop
+                players[drop].playerId = drag
 
                 val temp = players[drag]
                 players[drag] = players[drop]
                 players[drop] = temp
 
+                post {
+                    players[drag].adjustControlBar()
+                    players[drop].adjustControlBar()
+                }
+
+                val volume2 = players[drop].playerOptions.volume
+
+                players[drop].playerOptions.volume = players[drag].playerOptions.volume
+                players[drop].notifyPlayerOptionsChange()
+
+                players[drag].playerOptions.volume = volume2
+                players[drag].notifyPlayerOptionsChange()
+
                 context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
                     this.putString("roomId$drop", players[drop].roomId).apply()
+                    this.putString("roomId$drag", players[drag].roomId).apply()
                 }
             }
             p.onCardDropListener = {
@@ -85,6 +102,8 @@ class DDLayout(context: Context?) : LinearLayout(context) {
         stackview?.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         addView(stackview)
 
+        layoutPlayerCount = 0
+
         for (i in 1..9) {
             val layoutId = context.resources.getIdentifier("dd_layout_$i", "id", context.packageName)
             val v = stackview?.findViewById<LinearLayout>(layoutId)
@@ -95,6 +114,11 @@ class DDLayout(context: Context?) : LinearLayout(context) {
             if (v != null) {
                 val roomId = context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getString("roomId${i-1}", null)
                 p.roomId = roomId
+                post {
+                    p.adjustControlBar()
+                }
+//                p.adjustControlBar()
+                layoutPlayerCount += 1
             }else{
                 p.roomId = null
             }

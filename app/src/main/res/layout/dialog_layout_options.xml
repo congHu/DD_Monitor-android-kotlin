@@ -27,6 +27,7 @@
             android:layout_height="wrap_content"
             android:text="取消"
             android:id="@+id/layout_dialog_cancel_btn"
+            android:padding="16dp"
             />
     </LinearLayout>
 </LinearLayout>

@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Message
 import android.text.method.ScrollingMovementMethod
 import android.util.Log
+import android.util.TypedValue
 import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
@@ -21,8 +22,13 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.material.slider.Slider
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.JsonParser
 import com.hyc.dd_monitor.R
+import com.hyc.dd_monitor.models.PlayerOptions
 import okhttp3.*
+import okhttp3.internal.notify
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
@@ -32,6 +38,7 @@ import java.io.IOException
 import java.util.*
 import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
+import kotlin.math.roundToInt
 
 class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
@@ -41,6 +48,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             field = value
 
         }
+
+    var playerOptions = PlayerOptions()
 
     var qn: Int = 80
         set(value) {
@@ -60,6 +69,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     qnBtn.text = "画质"
                 }
                 roomId = roomId
+                playerOptions.qn = value
+                notifyPlayerOptionsChange()
             }
         }
 
@@ -73,15 +84,21 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var onCardDropListener: (() -> Unit)? = null
 
     var volumeBar: LinearLayout
-    var volumeSlider: Slider
+    var volumeSlider: SeekBar
+
+    var refreshBtn: Button
+    var volumeBtn: Button
+    var danmuBtn: Button
 
     var isGlobalMuted = false
         set(value) {
             field = value
-            player?.volume = if (value) 0f else volumeSlider.value/100f
+            player?.volume = if (value) 0f else volumeSlider.progress.toFloat()/100f
         }
 
     var qnBtn: Button
+
+    var isHiddenBarBtns = false
 
     init {
         layoutParams = ViewGroup.LayoutParams(
@@ -117,7 +134,10 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
             override fun getView(p0: Int, p1: View?, p2: ViewGroup?): View {
                 val view = p1 ?: View.inflate(context, R.layout.item_danmu_text, null)
-                view.findViewById<TextView>(R.id.danmu_textView).text = danmuList[p0]
+                val textview = view.findViewById<TextView>(R.id.danmu_textView)
+                textview.text = danmuList[p0]
+
+                textview.textSize = playerOptions.danmuSize.toFloat()
                 return view
             }
 
@@ -128,7 +148,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         playerNameBtn.setOnClickListener {
             if (roomId == null) return@setOnClickListener
             val pop = PopupMenu(context, playerNameBtn)
-            pop.menuInflater.inflate(R.menu.player_options, pop.menu)
+            val menuId = if (isHiddenBarBtns) R.menu.player_options_more else R.menu.player_options
+            pop.menuInflater.inflate(menuId, pop.menu)
             pop.setOnMenuItemClickListener {
                 if (it.itemId == R.id.window_close) {
                     roomId = null
@@ -142,12 +163,31 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                         intent.data = Uri.parse("bilibili://live/$roomId")
                         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         context.startActivity(intent)
+
+                        playerOptions.volume = 0f
+                        notifyPlayerOptionsChange()
                     }catch (_:Exception) {
                         val intent = Intent()
                         intent.data = Uri.parse("https://live.bilibili.com/$roomId")
                         context.startActivity(intent)
                     }
 
+                }
+                if (it.itemId == R.id.refresh_btn) {
+                    this.roomId = roomId
+                }
+                if (it.itemId == R.id.volume_btn) {
+                    if (volumeBar.visibility == VISIBLE) {
+                        volumeBar.visibility = INVISIBLE
+                    }else{
+                        volumeBar.visibility = VISIBLE
+                    }
+                }
+                if (it.itemId == R.id.danmu_btn) {
+                    showDanmuDialog()
+                }
+                if (it.itemId == R.id.qn_btn) {
+                    showQnMenu()
                 }
                 return@setOnMenuItemClickListener true
             }
@@ -176,10 +216,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     if (dragPid != this.playerId) {
                         Log.d("drop", "change $dragPid")
                         onDragAndDropListener?.invoke(dragPid, this.playerId)
-                        this.playerId = dragPid
-                        context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
-                            this.putString("roomId${this@DDPlayer.playerId}", roomId).apply()
-                        }
+//                        this.playerId = dragPid
+
                     }
                 }else if (label == "roomId") {
                     roomId = dragEvent.clipData.getItemAt(0).text.toString()
@@ -205,12 +243,12 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
         val typeface = Typeface.createFromAsset(context.assets, "iconfont.ttf")
 
-        val refreshBtn = findViewById<Button>(R.id.refresh_btn)
+        refreshBtn = findViewById<Button>(R.id.refresh_btn)
         refreshBtn.typeface = typeface
         refreshBtn.setOnClickListener {
             this.roomId = roomId
         }
-        val volumeBtn = findViewById<Button>(R.id.volume_btn)
+        volumeBtn = findViewById<Button>(R.id.volume_btn)
         volumeBtn.typeface = typeface
         volumeBtn.setOnClickListener {
             if (volumeBar.visibility == VISIBLE) {
@@ -219,56 +257,91 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                 volumeBar.visibility = VISIBLE
             }
         }
-        val danmuBtn = findViewById<Button>(R.id.danmu_btn)
+        danmuBtn = findViewById(R.id.danmu_btn)
         danmuBtn.typeface = typeface
         danmuBtn.setOnClickListener {
-
+            showDanmuDialog()
         }
 
-        volumeSlider.addOnChangeListener { slider, value, fromUser ->
-            player?.volume = if (isGlobalMuted) 0f else value/100f
-        }
+//        volumeSlider.addOnChangeListener { slider, value, fromUser ->
+//            player?.volume = if (isGlobalMuted) 0f else value/100f
+//        }
+        volumeSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+                player?.volume = if (isGlobalMuted) 0f else p1.toFloat()/100f
+            }
+
+            override fun onStartTrackingTouch(p0: SeekBar?) {
+            }
+
+            override fun onStopTrackingTouch(p0: SeekBar?) {
+                playerOptions.volume = volumeSlider.progress.toFloat()/100f
+                notifyPlayerOptionsChange()
+            }
+
+
+        })
 
         val muteBtn = findViewById<Button>(R.id.mute_btn)
         muteBtn.typeface = typeface
         muteBtn.setOnClickListener {
-            if (volumeSlider.value == 0f) {
-                volumeSlider.value = 50f
+            if (volumeSlider.progress == 0) {
+                volumeSlider.progress = 50
                 player?.volume = if (isGlobalMuted) 0f else .5f
+                playerOptions.volume = .5f
             }else{
-                volumeSlider.value = 0f
+                volumeSlider.progress = 0
                 player?.volume = 0f
+                playerOptions.volume = 0f
             }
+            notifyPlayerOptionsChange()
 
         }
 
         qnBtn.setOnClickListener {
-            val pop = PopupMenu(context, playerNameBtn)
-            pop.menuInflater.inflate(R.menu.qn_menu, pop.menu)
-            pop.setOnMenuItemClickListener {
-                var newQn = 80
-                if (it.itemId == R.id.qn_10000) {
-                    newQn = 10000
-                }
-                if (it.itemId == R.id.qn_400) {
-                    newQn = 400
-                }
-                if (it.itemId == R.id.qn_250) {
-                    newQn = 250
-                }
-                if (it.itemId == R.id.qn_150) {
-                    newQn = 150
-                }
-                if (it.itemId == R.id.qn_80) {
-                    newQn = 80
-                }
-                if (newQn != qn) {
-                    qn = newQn
-                }
-                return@setOnMenuItemClickListener true
-            }
-            pop.show()
+            showQnMenu()
         }
+
+        context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).getString("opts${this.playerId}", "")?.let {
+            try {
+                Log.d("playeroptions", "load $it")
+                playerOptions = Gson().fromJson(it, PlayerOptions::class.java)
+                qn = playerOptions.qn
+                notifyPlayerOptionsChange()
+            }catch (e:java.lang.Exception) {
+
+            }
+        }
+
+    }
+
+    fun showQnMenu() {
+        val pop = PopupMenu(context, playerNameBtn)
+        pop.menuInflater.inflate(R.menu.qn_menu, pop.menu)
+        pop.setOnMenuItemClickListener {
+            var newQn = 80
+            when (it.itemId) {
+                R.id.qn_10000 -> newQn = 10000
+                R.id.qn_400 -> newQn = 400
+                R.id.qn_250 -> newQn = 250
+                R.id.qn_150 -> newQn = 150
+                R.id.qn_80 -> newQn = 80
+            }
+            if (newQn != qn) {
+                qn = newQn
+            }
+            return@setOnMenuItemClickListener true
+        }
+        pop.show()
+    }
+
+    fun showDanmuDialog() {
+        val dialog = DanmuOptionsDialog(context, this.playerId)
+        dialog.onDanmuOptionsChangeListener = {
+            playerOptions = it
+            notifyPlayerOptionsChange()
+        }
+        dialog.show()
     }
 
     var player: SimpleExoPlayer? = null
@@ -349,6 +422,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                                 player = SimpleExoPlayer.Builder(context).build()
                                                 playerView.player = player
                                                 player!!.setMediaItem(MediaItem.fromUri(url))
+                                                player!!.volume = if (isGlobalMuted) 0f else volumeSlider.progress.toFloat()/100f
                                                 player!!.playWhenReady = true
                                                 player!!.prepare()
                                             }
@@ -467,6 +541,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                                             danmuList.removeFirst()
                                                         }
                                                         danmuList.add(danmu)
+                                                        danmuListView.deferNotifyDataSetChanged()
                                                         danmuListView.invalidateViews()
                                                         danmuListView.setSelection(danmuListView.bottom)
                                                     }
@@ -525,27 +600,50 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             })
         }
 
-//    val myHandler: Handler = object : Handler() {
-//        override fun handleMessage(msg: Message) {
-//            super.handleMessage(msg)
-//            if (msg.what == 1) {
-//                playerNameBtn.text = msg.obj as String
-//            }
-//            if (msg.what == 2) {
-//                player = SimpleExoPlayer.Builder(context).build()
-//                playerView.player = player
-//                player!!.setMediaItem(MediaItem.fromUri(msg.obj as String))
-//                player!!.playWhenReady = true
-//                player!!.prepare()
-//            }
-//            if (msg.what == 3) {
-//                if (danmuList.count() > 20) {
-//                    danmuList.removeFirst()
-//                }
-//                danmuList.add(msg.obj as String)
-//                danmuListView.invalidateViews()
-//                danmuListView.setSelection(danmuListView.bottom)
-//            }
-//        }
-//    }
+    fun adjustControlBar() {
+        Log.d("ddplayer", "width $width ${context.resources.displayMetrics.density}")
+        if (width < context.resources.displayMetrics.density * 30 * 5) {
+            refreshBtn.visibility = GONE
+            volumeBtn.visibility = GONE
+            danmuBtn.visibility = GONE
+            qnBtn.visibility = GONE
+            isHiddenBarBtns = true
+        }else{
+            refreshBtn.visibility = VISIBLE
+            volumeBtn.visibility = VISIBLE
+            danmuBtn.visibility = VISIBLE
+            qnBtn.visibility = VISIBLE
+            isHiddenBarBtns = false
+        }
+    }
+
+    fun notifyPlayerOptionsChange() {
+        volumeSlider.progress = (playerOptions.volume * 100f).roundToInt()
+        player?.volume = if (isGlobalMuted) 0f else playerOptions.volume
+
+        danmuListView.visibility = if (playerOptions.isDanmuShow) VISIBLE else GONE
+        danmuListView.invalidateViews()
+
+//        app:layout_constraintBottom_toBottomOf="parent"
+//        app:layout_constraintEnd_toEndOf="parent"
+//        app:layout_constraintStart_toStartOf="parent"
+//        app:layout_constraintTop_toTopOf="parent"
+//        app:layout_constraintHeight_percent=".8"
+//        app:layout_constraintHorizontal_bias="0"
+//        app:layout_constraintVertical_bias="0"
+//        app:layout_constraintWidth_percent=".2"
+        val layoutParams = danmuListView.layoutParams as LayoutParams
+        layoutParams.horizontalBias = if (playerOptions.danmuPosition == 0 || playerOptions.danmuPosition == 1) 0f else 1f
+        layoutParams.verticalBias = if (playerOptions.danmuPosition == 0 || playerOptions.danmuPosition == 2) 0f else 1f
+        layoutParams.matchConstraintPercentWidth = playerOptions.danmuWidth
+        layoutParams.matchConstraintPercentHeight = playerOptions.danmuHeight
+
+        danmuListView.layoutParams = layoutParams
+
+        val jstr = Gson().toJson(playerOptions)
+        Log.d("playeroptions", "${this.playerId} $jstr")
+        context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
+            this.putString("opts${this@DDPlayer.playerId}", jstr).apply()
+        }
+    }
 }

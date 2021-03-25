@@ -6,6 +6,7 @@ import android.content.res.Configuration
 import android.graphics.*
 import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.text.InputType
 import android.util.Log
 import android.view.*
@@ -17,6 +18,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import com.hyc.dd_monitor.models.UPInfo
 import com.hyc.dd_monitor.utils.RoundImageTransform
 import com.hyc.dd_monitor.views.DDLayout
+import com.hyc.dd_monitor.views.DanmuOptionsDialog
 import com.hyc.dd_monitor.views.LayoutOptionsDialog
 import com.squareup.picasso.Picasso
 import okhttp3.*
@@ -57,11 +59,16 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         window.decorView.post {
+//            for (p in 0 until ddLayout.layoutPlayerCount) {
+//                ddLayout.players[p].adjustControlBar()
+//            }
+
             (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager)?.let {
                 it.primaryClip?.let { clip ->
-                    Log.d("clipboard", clip.itemCount.toString())
+//                    Log.d("clipboard", clip.itemCount.toString())
                     if (clip.itemCount == 0) return@post
                     clip.getItemAt(0)?.let { item ->
+                        if (item.text != null) return@post
                         val clipboard = item.text.toString()
                         if (clipboard == lastClipboard) {
                             return@post
@@ -111,6 +118,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -131,8 +140,10 @@ class MainActivity : AppCompatActivity() {
 
         getSharedPreferences("sp", MODE_PRIVATE).getString("uplist", "")?.let {
             uplist = it.split(" ").toMutableList()
+            Log.d("uplist", it)
         }
-        if (uplist.count() == 0) {
+        Log.d("uplist", uplist[0])
+        if (uplist.count() == 0 || uplist[0].isEmpty()) {
             uplist = mutableListOf("47377","8792912","21652717","47867")
         }
 
@@ -217,12 +228,6 @@ class MainActivity : AppCompatActivity() {
             return@setOnItemLongClickListener true
         }
 
-        uplistview.setOnCreateContextMenuListener { contextMenu, view, contextMenuInfo ->
-            contextMenu.add("复制id")
-            contextMenu.add("跳转直播间")
-            contextMenu.add("删除")
-        }
-
         uplistview.setOnItemClickListener { adapterView, view, i, l ->
             val pop = PopupMenu(this, view)
             pop.menuInflater.inflate(R.menu.up_item_card, pop.menu)
@@ -273,6 +278,16 @@ class MainActivity : AppCompatActivity() {
 
         val danmuBtn = findViewById<Button>(R.id.danmu_btn)
         danmuBtn.typeface = typeface
+        danmuBtn.setOnClickListener {
+            val dialog = DanmuOptionsDialog(this, null)
+            dialog.onDanmuOptionsChangeListener = {
+                for (p in ddLayout.players) {
+                    p.playerOptions = it
+                    p.notifyPlayerOptionsChange()
+                }
+            }
+            dialog.show()
+        }
 
         val qnBtn = findViewById<Button>(R.id.qn_btn)
         qnBtn.setOnClickListener {
@@ -280,20 +295,12 @@ class MainActivity : AppCompatActivity() {
             pop.menuInflater.inflate(R.menu.qn_menu, pop.menu)
             pop.setOnMenuItemClickListener {
                 var newQn = 80
-                if (it.itemId == R.id.qn_10000) {
-                    newQn = 10000
-                }
-                if (it.itemId == R.id.qn_400) {
-                    newQn = 400
-                }
-                if (it.itemId == R.id.qn_250) {
-                    newQn = 250
-                }
-                if (it.itemId == R.id.qn_150) {
-                    newQn = 150
-                }
-                if (it.itemId == R.id.qn_80) {
-                    newQn = 80
+                when (it.itemId) {
+                    R.id.qn_10000 -> newQn = 10000
+                    R.id.qn_400 -> newQn = 400
+                    R.id.qn_250 -> newQn = 250
+                    R.id.qn_150 -> newQn = 150
+                    R.id.qn_80 -> newQn = 80
                 }
 
                 for (p in ddLayout.players) {
@@ -310,7 +317,7 @@ class MainActivity : AppCompatActivity() {
             val ver = packageManager.getPackageInfo(packageName, 0).versionName
             AlertDialog.Builder(this)
                 .setTitle("DD监控室 v${ver} by CongHu")
-                .setMessage("· 点击右上角“UP”按钮添加UP主，长按拖动到播放器窗口内。\n· 观看多个直播时请注意带宽网速、流量消耗、电池电量、机身发热、系统卡顿等软硬件环境问题。\n· 本软件开源，遵循LGPL-2.1协议。\n· 本软件仅读取公开API数据，不涉及账号登录，欢迎查看源码进行监督。因此，本软件不支持弹幕互动、直播打赏等功能，若要使用请前往原版B站APP。\n· 直播流、UP主信息、以及个人公开的关注列表数据来自B站公开API，最终解释权归B站所有。")
+                .setMessage("· 点击右上角“UP”按钮添加UP主，长按拖动到播放器窗口内。\n· 观看多个直播时请注意带宽网速、流量消耗、电池电量、机身发热、系统卡顿等软硬件环境问题。\n· 本软件仅读取公开API数据，不涉及账号登录，欢迎查看源码进行监督。因此，本软件不支持弹幕互动、直播打赏等功能，若要使用请前往原版B站APP。\n· 直播流、UP主信息、以及个人公开的关注列表数据来自B站公开API，最终解释权归B站所有。")
                 .setNegativeButton("关闭", null)
                 .show()
         }
@@ -323,33 +330,27 @@ class MainActivity : AppCompatActivity() {
             val pop = PopupMenu(this, qnBtn)
             pop.menuInflater.inflate(R.menu.timer_menu, pop.menu)
             pop.setOnMenuItemClickListener {
-                if (it.itemId == R.id.timer_set_15) {
-                    autoSleepTimerSet(15)
-                }
-                if (it.itemId == R.id.timer_set_30) {
-                    autoSleepTimerSet(30)
-                }
-                if (it.itemId == R.id.timer_set_60) {
-                    autoSleepTimerSet(60)
-                }
-                if (it.itemId == R.id.timer_custom) {
-                    val et = EditText(this)
-                    et.inputType = InputType.TYPE_CLASS_NUMBER
-                    AlertDialog.Builder(this)
-                        .setTitle("定时关闭（分钟）")
-                        .setView(et)
-                        .setPositiveButton("确定") { _, _ ->
-                            et.text.toString().toIntOrNull()?.let { min ->
-                                if (min in 1..99)
-                                    autoSleepTimerSet(min)
+                when (it.itemId) {
+                    R.id.timer_set_15 -> autoSleepTimerSet(15)
+                    R.id.timer_set_30 -> autoSleepTimerSet(30)
+                    R.id.timer_set_60 -> autoSleepTimerSet(60)
+                    R.id.timer_cancel -> autoSleepTimerSet(0)
+                    R.id.timer_custom -> {
+                        val et = EditText(this)
+                        et.inputType = InputType.TYPE_CLASS_NUMBER
+                        AlertDialog.Builder(this)
+                            .setTitle("定时关闭（分钟）")
+                            .setView(et)
+                            .setPositiveButton("确定") { _, _ ->
+                                et.text.toString().toIntOrNull()?.let { min ->
+                                    if (min in 1..99)
+                                        autoSleepTimerSet(min)
+                                }
                             }
-                        }
-                        .setNegativeButton("取消",null)
-                        .show()
-                    et.requestFocus()
-                }
-                if (it.itemId == R.id.timer_cancel) {
-                    autoSleepTimerSet(0)
+                            .setNegativeButton("取消",null)
+                            .show()
+                        et.requestFocus()
+                    }
                 }
                 return@setOnMenuItemClickListener true
             }
@@ -380,6 +381,7 @@ class MainActivity : AppCompatActivity() {
                 getSharedPreferences("sp", MODE_PRIVATE).edit {
                     this.putInt("layout", it).apply()
                 }
+
             }
             dialog.show()
         }
@@ -432,7 +434,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 .setNegativeButton("取消",null)
                 .show()
-            et.requestFocus()
+//            et.requestFocus()
         }
 
     }
@@ -440,6 +442,11 @@ class MainActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         Log.d("orientation", "onConfigurationChanged")
+        for (p in 0 until ddLayout.layoutPlayerCount) {
+            ddLayout.post {
+                ddLayout.players[p].adjustControlBar()
+            }
+        }
     }
 
     fun loadUpInfo(roomId: String, finished: ((realRoomId: String) -> Unit)? = null) {
@@ -508,6 +515,7 @@ class MainActivity : AppCompatActivity() {
         autoSleepTimer = null
         if (autoSleepMinutes <= 0) {
             timerTextView.text = ""
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             return
         }
         timerTextView.text = "$autoSleepMinutes"
@@ -533,7 +541,25 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-        }, 60000)
+        }, 60000, 60000)
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        for (p in ddLayout.players) {
+            p.player?.stop()
+        }
+    }
+
+    var backPressTime: Long = 0
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (System.currentTimeMillis() - backPressTime > 2000) {
+                Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show()
+                backPressTime = System.currentTimeMillis()
+                return true
+            }
+        }
+        return super.onKeyUp(keyCode, event)
+    }
 }
