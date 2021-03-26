@@ -81,7 +81,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var playerView: PlayerView
     var controlBar: LinearLayout
 
-    var danmuView: View
+    var danmuView: LinearLayout
     var danmuListView: ListView
     var interpreterListView: ListView
     var danmuListViewAdapter: BaseAdapter
@@ -450,6 +450,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             if (value == null) {
                 return
             }
+
+            playerNameBtn.text = "#${playerId+1}: 加载中"
+
 
             OkHttpClient().newCall(
                 Request.Builder()

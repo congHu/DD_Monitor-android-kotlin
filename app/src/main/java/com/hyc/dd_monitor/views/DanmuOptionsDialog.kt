@@ -99,7 +99,7 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
         val width = findViewById<TextView>(R.id.width_textview)
         width.text = "${(playerOptions.danmuWidth*100f).roundToInt()}%"
         findViewById<Button>(R.id.width_add).setOnClickListener {
-            val w = width.text.toString().toFloat()
+            val w = playerOptions.danmuWidth
             if (w + 0.1f <= 1f) {
                 width.text = "${((w+0.1f)*100f).roundToInt()}%"
                 playerOptions.danmuWidth = w + 0.1f
@@ -108,7 +108,7 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
             }
         }
         findViewById<Button>(R.id.width_minus).setOnClickListener {
-            val w = width.text.toString().toFloat()
+            val w = playerOptions.danmuWidth
             if (w - 0.1f >= 0.1f) {
 //                width.text = String.format("%.1f", w-0.1f)
                 width.text = "${((w-0.1f)*100f).roundToInt()}%"
@@ -121,7 +121,7 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
         val height = findViewById<TextView>(R.id.height_textview)
         height.text = "${(playerOptions.danmuHeight*100f).roundToInt()}%"
         findViewById<Button>(R.id.height_add).setOnClickListener {
-            val h = height.text.toString().toFloat()
+            val h = playerOptions.danmuHeight
             if (h + 0.1f <= 1f) {
 //                height.text = String.format("%.1f", h+0.1f)
                 height.text = "${((h+0.1f)*100f).roundToInt()}%"
@@ -131,7 +131,7 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
             }
         }
         findViewById<Button>(R.id.height_minus).setOnClickListener {
-            val h = height.text.toString().toFloat()
+            val h = playerOptions.danmuHeight
             if (h - 0.1f >= 0.1f) {
                 height.text = "${((h-0.1f)*100f).roundToInt()}%"
                 playerOptions.danmuHeight = h - 0.1f
