@@ -414,10 +414,11 @@ class MainActivity : AppCompatActivity() {
             drawer.openDrawer(drawerContent)
             for (up in 0 until uplist.count()) {
                 loadUpInfo(uplist[up]) {
-                    if (up == uplist.count() - 1) {
+                    if (it == uplist.last()) {
                         uplist.sortByDescending { id ->
-                            if (upinfos.containsKey(id)) upinfos[id]?.isLive else false
+                            upinfos[id]?.isLive
                         }
+                        Log.d("sort", "sort")
                         runOnUiThread {
 //                            uplistview.invalidateViews()
                             uplistviewAdapter.notifyDataSetInvalidated()
