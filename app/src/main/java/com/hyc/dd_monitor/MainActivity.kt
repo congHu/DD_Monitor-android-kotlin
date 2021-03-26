@@ -37,6 +37,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var upinfos: HashMap<String, UPInfo>
 
     lateinit var uplistview: ListView
+    lateinit var uplistviewAdapter: BaseAdapter
 
     lateinit var cancelDragView: TextView
 
@@ -154,7 +155,7 @@ class MainActivity : AppCompatActivity() {
         upinfos = HashMap()
 
         uplistview = findViewById(R.id.up_list_view)
-        uplistview.adapter = object : BaseAdapter() {
+        uplistviewAdapter = object : BaseAdapter() {
             override fun getCount(): Int {
                 return uplist.count()
             }
@@ -212,6 +213,7 @@ class MainActivity : AppCompatActivity() {
             }
 
         }
+        uplistview.adapter = uplistviewAdapter
 
         cancelDragView = findViewById(R.id.cancel_drag_view)
         cancelDragView.setOnDragListener { view, dragEvent ->
@@ -249,7 +251,8 @@ class MainActivity : AppCompatActivity() {
                 if (it.itemId == R.id.delete_item) {
                     Log.d("menu", "delete")
                     uplist.removeAt(i)
-                    uplistview.invalidateViews()
+//                    uplistview.invalidateViews()
+                    uplistviewAdapter.notifyDataSetInvalidated()
                     getSharedPreferences("sp", MODE_PRIVATE).edit {
                         this.putString("uplist", uplist.joinToString(" ")).apply()
                     }
@@ -416,7 +419,8 @@ class MainActivity : AppCompatActivity() {
                             if (upinfos.containsKey(id)) upinfos[id]?.isLive else false
                         }
                         runOnUiThread {
-                            uplistview.invalidateViews()
+//                            uplistview.invalidateViews()
+                            uplistviewAdapter.notifyDataSetInvalidated()
                         }
                     }
 
@@ -460,7 +464,8 @@ class MainActivity : AppCompatActivity() {
                             getSharedPreferences("sp", MODE_PRIVATE).edit {
                                 this.putString("uplist", uplist.joinToString(" ")).apply()
                             }
-                            uplistview.invalidateViews()
+//                            uplistview.invalidateViews()
+                            uplistviewAdapter.notifyDataSetInvalidated()
                         }
                     }
                 }
@@ -547,7 +552,8 @@ class MainActivity : AppCompatActivity() {
 
 
                         runOnUiThread {
-                            uplistview.invalidateViews()
+//                            uplistview.invalidateViews()
+                            uplistviewAdapter.notifyDataSetInvalidated()
                         }
 
                         return

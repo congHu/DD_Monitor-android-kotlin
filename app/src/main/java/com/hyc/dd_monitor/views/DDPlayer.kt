@@ -84,6 +84,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var danmuView: View
     var danmuListView: ListView
     var interpreterListView: ListView
+    var danmuListViewAdapter: BaseAdapter
+    var interpreterViewAdapter: BaseAdapter
 
     var danmuList: MutableList<String> = mutableListOf()
     var interpreterList: MutableList<String> = mutableListOf()
@@ -140,7 +142,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
 
 //        danmuTextView.movementMethod = ScrollingMovementMethod.getInstance()
-        danmuListView.adapter = object : BaseAdapter() {
+        danmuListViewAdapter = object : BaseAdapter() {
             override fun getCount(): Int {
                 return danmuList.count()
             }
@@ -163,8 +165,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             }
 
         }
+        danmuListView.adapter = danmuListViewAdapter
 
-        interpreterListView.adapter = object : BaseAdapter() {
+        interpreterViewAdapter = object : BaseAdapter() {
             override fun getCount(): Int {
                 return interpreterList.count()
             }
@@ -187,6 +190,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             }
 
         }
+        interpreterListView.adapter = interpreterViewAdapter
 
         shadowView = findViewById(R.id.shadow_view)
         shadowFaceImg = findViewById(R.id.shadow_imageview)
@@ -425,7 +429,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         set(value) {
             if (field != value) {
                 danmuList.removeAll(danmuList)
-                danmuListView.invalidateViews()
+//                danmuListView.invalidateViews()
+                danmuListViewAdapter.notifyDataSetInvalidated()
             }
             field = value
             playerView.player = null
@@ -621,8 +626,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                                             danmuList.removeFirst()
                                                         }
                                                         danmuList.add(danmu)
-                                                        danmuListView.deferNotifyDataSetChanged()
-                                                        danmuListView.invalidateViews()
+//                                                        danmuListView.deferNotifyDataSetChanged()
+//                                                        danmuListView.invalidateViews()
+                                                        danmuListViewAdapter.notifyDataSetInvalidated()
                                                         danmuListView.setSelection(danmuListView.bottom)
 
                                                         if (danmu.startsWith("【")
@@ -633,8 +639,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                                                 interpreterList.removeFirst()
                                                             }
                                                             interpreterList.add(danmu)
-                                                            interpreterListView.deferNotifyDataSetChanged()
-                                                            interpreterListView.invalidateViews()
+//                                                            interpreterListView.deferNotifyDataSetChanged()
+//                                                            interpreterListView.invalidateViews()
+                                                            interpreterViewAdapter.notifyDataSetInvalidated()
                                                             interpreterListView.setSelection(interpreterListView.bottom)
                                                         }
                                                     }
@@ -717,8 +724,10 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         danmuView.visibility = if (playerOptions.isDanmuShow) VISIBLE else GONE
         danmuListView.visibility = if (playerOptions.interpreterStyle == 2) GONE else VISIBLE
         interpreterListView.visibility = if (playerOptions.interpreterStyle == 0) GONE else VISIBLE
-        danmuListView.invalidateViews()
-        interpreterListView.invalidateViews()
+//        danmuListView.invalidateViews()
+//        interpreterListView.invalidateViews()
+        danmuListViewAdapter.notifyDataSetInvalidated()
+        interpreterViewAdapter.notifyDataSetInvalidated()
 
 //        app:layout_constraintBottom_toBottomOf="parent"
 //        app:layout_constraintEnd_toEndOf="parent"
