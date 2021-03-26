@@ -13,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.gson.Gson
 import com.hyc.dd_monitor.R
 import com.hyc.dd_monitor.models.PlayerOptions
+import kotlin.math.roundToInt
 
 class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
 
@@ -29,15 +30,25 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.dialog_danmu_options)
 
-        var playerOptions = PlayerOptions()
-        context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).getString("opts$playerId", "")?.let {
-            try {
-                Log.d("playeroptions", "load $it")
-                playerOptions = Gson().fromJson(it, PlayerOptions::class.java)
-            }catch (e:java.lang.Exception) {
+        val title = findViewById<TextView>(R.id.danmu_options_title)
 
+        var playerOptions = PlayerOptions()
+
+        if (playerId != null) {
+            title.text = "窗口#${playerId!! +1}弹幕设置"
+            context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).getString("opts$playerId", "")?.let {
+                try {
+                    Log.d("playeroptions", "load $it")
+                    playerOptions = Gson().fromJson(it, PlayerOptions::class.java)
+                }catch (e:java.lang.Exception) {
+
+                }
             }
+        }else{
+            title.text = "全局弹幕设置"
         }
+
+
 
         val switch = findViewById<Switch>(R.id.isShow_switch)
         switch.isChecked = playerOptions.isDanmuShow
@@ -86,11 +97,11 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
         }
 
         val width = findViewById<TextView>(R.id.width_textview)
-        width.text = String.format("%.1f", playerOptions.danmuWidth)
+        width.text = "${(playerOptions.danmuWidth*100f).roundToInt()}%"
         findViewById<Button>(R.id.width_add).setOnClickListener {
             val w = width.text.toString().toFloat()
             if (w + 0.1f <= 1f) {
-                width.text = String.format("%.1f", w+0.1f)
+                width.text = "${((w+0.1f)*100f).roundToInt()}%"
                 playerOptions.danmuWidth = w + 0.1f
                 onDanmuOptionsChangeListener?.invoke(playerOptions)
 
@@ -99,7 +110,8 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
         findViewById<Button>(R.id.width_minus).setOnClickListener {
             val w = width.text.toString().toFloat()
             if (w - 0.1f >= 0.1f) {
-                width.text = String.format("%.1f", w-0.1f)
+//                width.text = String.format("%.1f", w-0.1f)
+                width.text = "${((w-0.1f)*100f).roundToInt()}%"
                 playerOptions.danmuWidth = w - 0.1f
                 onDanmuOptionsChangeListener?.invoke(playerOptions)
 
@@ -107,11 +119,12 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
         }
 
         val height = findViewById<TextView>(R.id.height_textview)
-        height.text = String.format("%.1f", playerOptions.danmuHeight)
+        height.text = "${(playerOptions.danmuHeight*100f).roundToInt()}%"
         findViewById<Button>(R.id.height_add).setOnClickListener {
             val h = height.text.toString().toFloat()
             if (h + 0.1f <= 1f) {
-                height.text = String.format("%.1f", h+0.1f)
+//                height.text = String.format("%.1f", h+0.1f)
+                height.text = "${((h+0.1f)*100f).roundToInt()}%"
                 playerOptions.danmuHeight = h + 0.1f
                 onDanmuOptionsChangeListener?.invoke(playerOptions)
 
@@ -120,11 +133,28 @@ class DanmuOptionsDialog(context: Context, playerId: Int?) : Dialog(context) {
         findViewById<Button>(R.id.height_minus).setOnClickListener {
             val h = height.text.toString().toFloat()
             if (h - 0.1f >= 0.1f) {
-                height.text = String.format("%.1f", h-0.1f)
+                height.text = "${((h-0.1f)*100f).roundToInt()}%"
                 playerOptions.danmuHeight = h - 0.1f
                 onDanmuOptionsChangeListener?.invoke(playerOptions)
 
             }
+        }
+
+        val interpreterStyle = findViewById<RadioGroup>(R.id.interpreter_style)
+
+        when (playerOptions.interpreterStyle) {
+            0 -> interpreterStyle.check(R.id.interpreter_hide)
+            1 -> interpreterStyle.check(R.id.interpreter_show)
+            2 -> interpreterStyle.check(R.id.interpreter_showonly)
+        }
+
+        interpreterStyle.setOnCheckedChangeListener { radioGroup, i ->
+            when (i) {
+                R.id.interpreter_hide -> playerOptions.interpreterStyle = 0
+                R.id.interpreter_show -> playerOptions.interpreterStyle = 1
+                R.id.interpreter_showonly -> playerOptions.interpreterStyle = 2
+            }
+            onDanmuOptionsChangeListener?.invoke(playerOptions)
         }
 
         findViewById<Button>(R.id.dialog_cancel_btn).setOnClickListener {

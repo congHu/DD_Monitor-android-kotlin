@@ -19,6 +19,7 @@
                 android:textStyle="bold"
                 android:padding="16dp"
                 android:text="弹幕设置"
+                android:id="@+id/danmu_options_title"
                 />
             <LinearLayout
                 android:layout_width="match_parent"
@@ -48,6 +49,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
                     android:text="位置"
+                    android:paddingTop="5dp"
                     />
                 <RadioGroup
                     android:layout_width="wrap_content"
@@ -92,15 +94,19 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="字体"
+                    android:text="字体大小"
                     />
                 <Button
                     android:layout_width="32dp"
-                    android:layout_height="40dp"
+                    android:layout_height="32dp"
                     android:text="-"
                     android:padding="0dp"
                     android:layout_marginLeft="8dp"
                     android:id="@+id/fontsize_minus"
+                    android:background="@drawable/default_btn"
+                    android:minHeight="0dp"
+                    android:textColor="@color/colorText"
+
                     />
                 <TextView
                     android:layout_width="wrap_content"
@@ -111,11 +117,14 @@
                     />
                 <Button
                     android:layout_width="32dp"
-                    android:layout_height="40dp"
+                    android:layout_height="32dp"
                     android:text="+"
                     android:padding="0dp"
                     android:layout_marginLeft="8dp"
                     android:id="@+id/fontsize_add"
+                    android:background="@drawable/default_btn"
+                    android:minHeight="0dp"
+                    android:textColor="@color/colorText"
                     />
             </LinearLayout>
             <LinearLayout
@@ -131,11 +140,15 @@
                     />
                 <Button
                     android:layout_width="32dp"
-                    android:layout_height="40dp"
+                    android:layout_height="32dp"
                     android:text="-"
                     android:padding="0dp"
                     android:layout_marginLeft="8dp"
                     android:id="@+id/width_minus"
+                    android:background="@drawable/default_btn"
+                    android:minHeight="0dp"
+                    android:textColor="@color/colorText"
+
                     />
                 <TextView
                     android:layout_width="wrap_content"
@@ -147,12 +160,14 @@
                     />
                 <Button
                     android:layout_width="32dp"
-                    android:layout_height="40dp"
+                    android:layout_height="32dp"
                     android:text="+"
                     android:padding="0dp"
                     android:layout_marginLeft="8dp"
                     android:id="@+id/width_add"
-
+                    android:background="@drawable/default_btn"
+                    android:minHeight="0dp"
+                    android:textColor="@color/colorText"
                     />
             </LinearLayout>
             <LinearLayout
@@ -168,11 +183,15 @@
                     />
                 <Button
                     android:layout_width="32dp"
-                    android:layout_height="40dp"
+                    android:layout_height="32dp"
                     android:text="-"
                     android:padding="0dp"
                     android:layout_marginLeft="8dp"
                     android:id="@+id/height_minus"
+                    android:background="@drawable/default_btn"
+                    android:minHeight="0dp"
+                    android:textColor="@color/colorText"
+
                     />
                 <TextView
                     android:layout_width="wrap_content"
@@ -183,12 +202,55 @@
                     />
                 <Button
                     android:layout_width="32dp"
-                    android:layout_height="40dp"
+                    android:layout_height="32dp"
                     android:text="+"
                     android:padding="0dp"
                     android:layout_marginLeft="8dp"
                     android:id="@+id/height_add"
+                    android:background="@drawable/default_btn"
+                    android:minHeight="0dp"
+                    android:textColor="@color/colorText"
                     />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                >
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:text="同传弹幕"
+                    android:gravity="center"
+                    />
+                <RadioGroup
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:id="@+id/interpreter_style"
+                    >
+                    <RadioButton
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="隐藏"
+                        android:checked="true"
+                        android:id="@+id/interpreter_hide"
+                        />
+                    <RadioButton
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="显示"
+                        android:id="@+id/interpreter_show"
+                        />
+                    <RadioButton
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="独占"
+                        android:id="@+id/interpreter_showonly"
+                        />
+
+                </RadioGroup>
             </LinearLayout>
             <LinearLayout
                 android:layout_width="match_parent"
@@ -199,9 +261,12 @@
                 >
                 <Button
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="40dp"
                     android:text="完成"
                     android:id="@+id/dialog_cancel_btn"
+                    android:background="@drawable/default_btn"
+                    android:minHeight="0dp"
+                    android:textColor="@color/colorText"
                     />
             </LinearLayout>
         </LinearLayout>

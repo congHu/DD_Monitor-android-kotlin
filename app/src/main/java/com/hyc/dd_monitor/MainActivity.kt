@@ -52,6 +52,9 @@ class MainActivity : AppCompatActivity() {
 
     lateinit var timerTextView: TextView
 
+//    var isLiveMap: HashMap<String, Boolean> = HashMap()
+//    var roomIdToCheck: String? = null
+
     var lastClipboard: String? = null
     override fun onResume() {
         super.onResume()
@@ -65,10 +68,10 @@ class MainActivity : AppCompatActivity() {
 
             (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager)?.let {
                 it.primaryClip?.let { clip ->
-//                    Log.d("clipboard", clip.itemCount.toString())
+                    Log.d("clipboard", clip.itemCount.toString())
                     if (clip.itemCount == 0) return@post
                     clip.getItemAt(0)?.let { item ->
-                        if (item.text != null) return@post
+                        if (item.text == null) return@post
                         val clipboard = item.text.toString()
                         if (clipboard == lastClipboard) {
                             return@post
@@ -171,6 +174,7 @@ class MainActivity : AppCompatActivity() {
                 val face = view.findViewById<ImageView>(R.id.up_face_image)
                 val uname = view.findViewById<TextView>(R.id.up_uname_textview)
                 val title = view.findViewById<TextView>(R.id.up_title_textview)
+                val shadow = view.findViewById<ImageView>(R.id.shadow_imageview)
 
                 val isLiveCover = view.findViewById<TextView>(R.id.up_islive_cover)
 
@@ -181,10 +185,11 @@ class MainActivity : AppCompatActivity() {
                     val upInfo = upinfos[roomId]
                     upInfo!!.coverImageUrl?.let {
                         Log.d("picasso", it)
-                        Picasso.get().load(Uri.parse(it)).into(cover)
+                        Picasso.get().load(it).into(cover)
                     }
                     upInfo.faceImageUrl?.let {
-                        Picasso.get().load(Uri.parse(it)).transform(RoundImageTransform()).into(face)
+                        Picasso.get().load(it).transform(RoundImageTransform()).into(face)
+                        Picasso.get().load(it).transform(RoundImageTransform()).into(shadow)
                     }
                     if (upInfo.uname != null) {
                         uname.text = upInfo.uname
@@ -213,18 +218,27 @@ class MainActivity : AppCompatActivity() {
             if (dragEvent.action == DragEvent.ACTION_DROP) {
                 cancelDragView.visibility = View.GONE
             }
+            if (dragEvent.action == DragEvent.ACTION_DRAG_ENTERED) {
+                cancelDragView.setBackgroundColor(resources.getColor(R.color.teal_200, theme))
+            }
+            if (dragEvent.action == DragEvent.ACTION_DRAG_EXITED) {
+                cancelDragView.setBackgroundColor(resources.getColor(R.color.teal_700, theme))
+            }
             return@setOnDragListener true
         }
 
         // 卡片拖拽
         uplistview.setOnItemLongClickListener { adapterView, view, i, l ->
             Log.d("long click", i.toString())
-            view.startDragAndDrop(
-                ClipData("roomId", arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), ClipData.Item(uplist[i])),
-                View.DragShadowBuilder(view), null, View.DRAG_FLAG_GLOBAL
-            )
+
+            val clipData = ClipData("roomId", arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), ClipData.Item(uplist[i]))
+            clipData.addItem(ClipData.Item(upinfos[uplist[i]]?.faceImageUrl))
+
+            view.startDragAndDrop(clipData, View.DragShadowBuilder(view.findViewById(R.id.shadow_imageview)), null, View.DRAG_FLAG_GLOBAL)
+
             drawer.closeDrawers()
             cancelDragView.visibility = View.VISIBLE
+            cancelDragView.setBackgroundColor(resources.getColor(R.color.teal_700, theme))
             return@setOnItemLongClickListener true
         }
 
@@ -327,7 +341,7 @@ class MainActivity : AppCompatActivity() {
         val timerBtn = findViewById<Button>(R.id.timer_btn)
         timerBtn.typeface = typeface
         timerBtn.setOnClickListener {
-            val pop = PopupMenu(this, qnBtn)
+            val pop = PopupMenu(this, timerBtn)
             pop.menuInflater.inflate(R.menu.timer_menu, pop.menu)
             pop.setOnMenuItemClickListener {
                 when (it.itemId) {
@@ -377,6 +391,13 @@ class MainActivity : AppCompatActivity() {
         layoutBtn.setOnClickListener {
             val dialog = LayoutOptionsDialog(this)
             dialog.onLayoutOptionsSelectedListener = {
+                if (ddLayout.layoutBeforeFullScreen != null) {
+                    val target = ddLayout.players[ddLayout.fullScreenPlayerId!!]
+                    ddLayout.players[ddLayout.fullScreenPlayerId!!] = ddLayout.players[0]
+                    ddLayout.players[0] = target
+                    ddLayout.fullScreenPlayerId = null
+                    ddLayout.layoutBeforeFullScreen = null
+                }
                 ddLayout.layoutId = it
                 getSharedPreferences("sp", MODE_PRIVATE).edit {
                     this.putInt("layout", it).apply()
@@ -388,9 +409,20 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.uplist_btn).setOnClickListener {
             drawer.openDrawer(drawerContent)
-            for (up in uplist) {
-                loadUpInfo(up)
+            for (up in 0 until uplist.count()) {
+                loadUpInfo(uplist[up]) {
+                    if (up == uplist.count() - 1) {
+                        uplist.sortByDescending { id ->
+                            if (upinfos.containsKey(id)) upinfos[id]?.isLive else false
+                        }
+                        runOnUiThread {
+                            uplistview.invalidateViews()
+                        }
+                    }
+
+                }
             }
+
         }
 
         findViewById<Button>(R.id.add_up_btn).setOnClickListener {
@@ -437,6 +469,27 @@ class MainActivity : AppCompatActivity() {
 //            et.requestFocus()
         }
 
+//        val timer = Timer()
+//        timer.schedule(object : TimerTask() {
+//            override fun run() {
+//                if (roomIdToCheck == null) {
+//                    roomIdToCheck = uplist[0].
+//                }
+//                loadUpInfo(roomIdToCheck) {
+//                    if (isLiveMap.containsKey(up)) {
+//                        if (isLiveMap[up] == false && upinfos[up]?.isLive == true) {
+//                            runOnUiThread {
+//                                Log.d("isLive", "${upinfos[up]?.uname ?: "?"} 开播了")
+//                                Toast.makeText(this@MainActivity, "${upinfos[up]?.uname ?: "?"} 开播了", Toast.LENGTH_SHORT).show()
+//                            }
+//                        }
+//                    }else{
+//                        isLiveMap[up] = upinfos[up]?.isLive ?: false
+//                    }
+//
+//                }
+//            }
+//        }, 10000, 10000)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -467,7 +520,6 @@ class MainActivity : AppCompatActivity() {
 
                         val realRoomId = roomInfo.getInt("room_id").toString()
 
-                        finished?.invoke(realRoomId)
 
                         val upInfo = UPInfo()
                         upInfo.title = roomInfo.getString("title")
@@ -485,12 +537,13 @@ class MainActivity : AppCompatActivity() {
                         upInfo.faceImageUrl = face
 
                         upinfos[realRoomId] = upInfo
+                        finished?.invoke(realRoomId)
 
-                        if (uplist.indexOf(roomId) == uplist.count() - 1) {
-                            uplist.sortByDescending { id ->
-                                if (upinfos.containsKey(id)) upinfos[id]?.isLive else false
-                            }
-                        }
+//                        if (uplist.indexOf(roomId) == uplist.count() - 1) {
+//                            uplist.sortByDescending { id ->
+//                                if (upinfos.containsKey(id)) upinfos[id]?.isLive else false
+//                            }
+//                        }
 
 
                         runOnUiThread {
@@ -536,6 +589,7 @@ class MainActivity : AppCompatActivity() {
                             p.player?.pause()
                         }
                         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        Toast.makeText(this@MainActivity, "已恢复系统自动锁屏", Toast.LENGTH_SHORT).show()
                     }
 
                 }

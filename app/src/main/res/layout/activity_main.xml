@@ -164,10 +164,14 @@
                 android:text="列表"
                 />
             <Button
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="60dp"
+                android:layout_height="32dp"
                 android:text="添加"
                 android:id="@+id/add_up_btn"
+                android:background="@drawable/default_btn_night"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:textColor="#fff"
                 />
         </LinearLayout>
         <ListView

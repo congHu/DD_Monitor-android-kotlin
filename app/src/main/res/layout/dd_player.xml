@@ -34,7 +34,8 @@
 <!--        android:singleLine="false"-->
 <!--        android:maxLines="40"-->
 <!--        />-->
-    <ListView
+
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -45,9 +46,26 @@
         app:layout_constraintHorizontal_bias="0"
         app:layout_constraintVertical_bias="0"
         app:layout_constraintWidth_percent=".2"
-        android:id="@+id/danmu_listView"
-        android:background="#99000000"
-        />
+        android:orientation="vertical"
+        android:id="@+id/danmu_view"
+        >
+        <ListView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#80000000"
+            android:id="@+id/danmu_listView"
+            />
+        <ListView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="#80000000"
+            android:id="@+id/interpreter_listView"
+            android:visibility="gone"
+            />
+    </LinearLayout>
+
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -55,7 +73,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:background="#99000000"
+        android:background="#80000000"
         android:orientation="horizontal"
         android:id="@+id/player_control_bar"
         >
@@ -119,7 +137,7 @@
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintHorizontal_bias="0"
         android:layout_marginStart="30dp"
-        android:background="#90000000"
+        android:background="#80000000"
         android:orientation="vertical"
         android:visibility="invisible"
         android:id="@+id/volume_bar"
@@ -156,4 +174,31 @@
             android:id="@+id/mute_btn"
             />
     </LinearLayout>
+
+    <FrameLayout
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:visibility="invisible"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:id="@+id/shadow_view"
+        >
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="#"
+            android:background="@drawable/round"
+            android:textColor="#000"
+            android:textSize="30sp"
+            android:id="@+id/shadow_textview"
+            />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/shadow_imageview"
+            />
+    </FrameLayout>
+
+
 </androidx.constraintlayout.widget.ConstraintLayout>

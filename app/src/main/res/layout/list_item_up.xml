@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:padding="8dp"
     >
@@ -81,5 +81,10 @@
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-
-</LinearLayout>
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:visibility="invisible"
+        android:id="@+id/shadow_imageview"
+        />
+</FrameLayout>

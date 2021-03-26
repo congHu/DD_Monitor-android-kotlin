@@ -24,6 +24,9 @@ class DDLayout(context: Context?) : LinearLayout(context) {
 
     var layoutPlayerCount = 0
 
+    var fullScreenPlayerId: Int? = null
+    var layoutBeforeFullScreen: Int? = null
+
     init {
         layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
 //        this.layoutId = 2
@@ -76,6 +79,25 @@ class DDLayout(context: Context?) : LinearLayout(context) {
                     this.putString("roomId$drag", players[drag].roomId).apply()
                 }
             }
+            p.onDoubleClickListener = {
+                if (layoutBeforeFullScreen == null) {
+                    val target = players[it]
+                    players[it] = players[0]
+                    players[0] = target
+                    fullScreenPlayerId = it
+                    layoutBeforeFullScreen = layoutId
+                    layoutId = 1
+                }else{
+                    val target = players[fullScreenPlayerId!!]
+                    players[fullScreenPlayerId!!] = players[0]
+                    players[0] = target
+                    layoutId = layoutBeforeFullScreen!!
+                    fullScreenPlayerId = null
+                    layoutBeforeFullScreen = null
+                }
+
+
+            }
             p.onCardDropListener = {
                 onCardDropListener?.invoke()
             }
@@ -112,8 +134,12 @@ class DDLayout(context: Context?) : LinearLayout(context) {
             v?.addView(p)
 
             if (v != null) {
-                val roomId = context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getString("roomId${i-1}", null)
-                p.roomId = roomId
+                if (fullScreenPlayerId != null && p.roomId != null) {
+                    p.roomId = p.roomId
+                }else{
+                    p.roomId = context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getString("roomId${i-1}", null)
+                }
+
                 post {
                     p.adjustControlBar()
                 }
