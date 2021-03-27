@@ -13,6 +13,7 @@ import android.view.*
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.drawerlayout.widget.DrawerLayout
 import com.hyc.dd_monitor.models.UPInfo
@@ -131,6 +132,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         Log.d("orientation", "onCreate: ")
+
+        ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE,android.Manifest.permission.READ_EXTERNAL_STORAGE), 111)
 
         drawer = findViewById(R.id.main_drawer)
         drawerContent = findViewById(R.id.drawer_content)
@@ -411,6 +414,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.uplist_btn).setOnClickListener {
+//            throw java.lang.Exception("oopss")
             drawer.openDrawer(drawerContent)
             for (up in 0 until uplist.count()) {
                 loadUpInfo(uplist[up]) {
