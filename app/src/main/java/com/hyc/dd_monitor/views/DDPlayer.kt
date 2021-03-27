@@ -282,7 +282,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
                     roomId = dragEvent.clipData.getItemAt(0).text.toString()
                     val face = dragEvent.clipData.getItemAt(1).text.toString()
-                    Picasso.get().load(face).transform(RoundImageTransform()).into(shadowFaceImg)
+                    try {
+                        Picasso.get().load(face).transform(RoundImageTransform()).into(shadowFaceImg)
+                    }catch (e: Exception) {}
 //                    Log.d("shadowFaceImg", shadowFaceImg)
                     onCardDropListener?.invoke()
                     context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
@@ -479,8 +481,11 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                             handler.post {
                                 playerNameBtn.text = "#${playerId + 1}: $liveStatus$uname"
                                 shadowTextView.text = "#${playerId + 1}"
-                                Picasso.get().load(face).transform(RoundImageTransform())
-                                    .into(shadowFaceImg)
+                                try {
+                                    Picasso.get().load(face).transform(RoundImageTransform())
+                                        .into(shadowFaceImg)
+                                }catch (e: Exception) {}
+
                             }
 //                            val msg = Message()
 //                            msg.what = 1

@@ -124,6 +124,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             dumpPhoneInfo(pw);
             pw.println();
             //将抛出的异常信息写入到文件
+            pw.println(ex.getMessage());
             ex.printStackTrace(pw);
             pw.close();
         } catch (Exception e) {

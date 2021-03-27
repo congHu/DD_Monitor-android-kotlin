@@ -126,6 +126,8 @@
             android:textColor="#ffffff"
             android:textAllCaps="false"
             android:textSize="13sp"
+            android:maxLines="1"
+            android:lines="1"
             />
     </LinearLayout>
 

@@ -187,24 +187,32 @@ class MainActivity : AppCompatActivity() {
 
                 if (upinfos.containsKey(roomId)) {
                     val upInfo = upinfos[roomId]
-                    upInfo!!.coverImageUrl?.let {
-                        Log.d("picasso", it)
-                        Picasso.get().load(it).into(cover)
+                    try {
+                        Picasso.get().load(upInfo?.coverImageUrl).into(cover)
+                        Picasso.get().load(upInfo?.faceImageUrl).transform(RoundImageTransform()).into(face)
+                        Picasso.get().load(upInfo?.faceImageUrl).transform(RoundImageTransform()).into(shadow)
+                    }catch (e: Exception) {
+
                     }
-                    upInfo.faceImageUrl?.let {
-                        Picasso.get().load(it).transform(RoundImageTransform()).into(face)
-                        Picasso.get().load(it).transform(RoundImageTransform()).into(shadow)
-                    }
-                    if (upInfo.uname != null) {
+
+//                    upInfo!!.coverImageUrl?.let {
+//                        Log.d("picasso", it)
+//                        Picasso.get().load(it).into(cover)
+//                    }
+//                    upInfo.faceImageUrl?.let {
+//                        Picasso.get().load(it).transform(RoundImageTransform()).into(face)
+//                        Picasso.get().load(it).transform(RoundImageTransform()).into(shadow)
+//                    }
+                    if (upInfo?.uname != null) {
                         uname.text = upInfo.uname
                         uname.setBackgroundColor(Color.TRANSPARENT)
                     }
-                    if (upInfo.title != null) {
+                    if (upInfo?.title != null) {
                         title.text = upInfo.title
                         title.setBackgroundColor(Color.TRANSPARENT)
                     }
 
-                    if (upInfo.isLive) {
+                    if (upInfo?.isLive == true) {
                         isLiveCover.visibility = View.GONE
                     }else{
                         isLiveCover.visibility = View.VISIBLE
@@ -334,10 +342,23 @@ class MainActivity : AppCompatActivity() {
         val aboutBtn = findViewById<Button>(R.id.about_btn)
         aboutBtn.typeface = typeface
         aboutBtn.setOnClickListener {
+//            throw Exception("oops")
             val ver = packageManager.getPackageInfo(packageName, 0).versionName
             AlertDialog.Builder(this)
                 .setTitle("DD监控室 v${ver} by CongHu")
                 .setMessage("· 点击右上角“UP”按钮添加UP主，长按拖动到播放器窗口内。\n· 观看多个直播时请注意带宽网速、流量消耗、电池电量、机身发热、系统卡顿等软硬件环境问题。\n· 本软件仅读取公开API数据，不涉及账号登录，欢迎查看源码进行监督。因此，本软件不支持弹幕互动、直播打赏等功能，若要使用请前往原版B站APP。")
+                .setPositiveButton("B站视频") {_,_->
+                    try {
+                        val intent = Intent()
+                        intent.data = Uri.parse("bilibili://video/BV13y4y1b7bY")
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
+                    }catch (_:Exception) {
+                        val intent = Intent()
+                        intent.data = Uri.parse("https://www.bilibili.com/video/BV13y4y1b7bY")
+                        startActivity(intent)
+                    }
+                }
                 .setNegativeButton("关闭", null)
                 .show()
         }
