@@ -31,11 +31,25 @@
                 android:gravity="center"
                 android:id="@+id/up_islive_cover"
                 />
-            <CheckBox
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+<!--            <CheckBox-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:id="@+id/up_checkbox"-->
+<!--                android:visibility="gone"-->
+<!--                android:enabled="false"-->
+<!--                android:theme="@style/MyCheckBox"-->
+<!--                />-->
+            <TextView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
                 android:id="@+id/up_checkbox"
                 android:visibility="gone"
+                android:text="√"
+                android:gravity="center"
+                android:textColor="#000"
+                android:background="@drawable/round"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="4dp"
                 />
         </FrameLayout>
 
@@ -81,10 +95,26 @@
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
-    <ImageView
+    <FrameLayout
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:visibility="invisible"
-        android:id="@+id/shadow_imageview"
-        />
+        android:id="@+id/shadow_view"
+        >
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="#"
+            android:background="@drawable/round"
+            android:textColor="#000"
+            android:textSize="30sp"
+            android:id="@+id/shadow_textview"
+            />
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/shadow_imageview"
+            />
+    </FrameLayout>
 </FrameLayout>

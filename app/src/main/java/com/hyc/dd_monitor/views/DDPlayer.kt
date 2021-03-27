@@ -6,11 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
-import android.os.Handler
-import android.os.Message
-import android.text.method.ScrollingMovementMethod
 import android.util.Log
-import android.util.TypedValue
 import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
@@ -21,16 +17,12 @@ import androidx.core.content.edit
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.ui.PlayerView
-import com.google.android.material.slider.Slider
 import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonParser
 import com.hyc.dd_monitor.R
 import com.hyc.dd_monitor.models.PlayerOptions
 import com.hyc.dd_monitor.utils.RoundImageTransform
 import com.squareup.picasso.Picasso
 import okhttp3.*
-import okhttp3.internal.notify
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import org.json.JSONObject
@@ -38,7 +30,6 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.*
-import java.util.zip.Inflater
 import java.util.zip.InflaterInputStream
 import kotlin.math.roundToInt
 
@@ -190,6 +181,27 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             }
 
         }
+
+        val volumeChangedListener = object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
+                player?.volume = if (isGlobalMuted) 0f else p1.toFloat()/100f
+            }
+
+            override fun onStartTrackingTouch(p0: SeekBar?) {
+                volumeAdjusting = true
+            }
+
+            override fun onStopTrackingTouch(p0: SeekBar?) {
+                volumeAdjusting = false
+                showControlBar()
+                if (p0 != null && p0 != volumeSlider) {
+                    volumeSlider.progress = p0.progress
+                }
+                playerOptions.volume = volumeSlider.progress.toFloat()/100f
+                notifyPlayerOptionsChange()
+            }
+        }
+
         interpreterListView.adapter = interpreterViewAdapter
 
         shadowView = findViewById(R.id.shadow_view)
@@ -231,8 +243,12 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     this.roomId = roomId
                 }
                 if (it.itemId == R.id.volume_btn) {
-                    if (volumeBar.visibility == VISIBLE) {
-                        volumeBar.visibility = INVISIBLE
+                    if (height < context.resources.displayMetrics.density * 130) {
+                        val dialog = VolumeControlDialog(context)
+                        dialog.title = "音量调节: ${playerNameBtn.text}"
+                        dialog.onSeekBarListener = volumeChangedListener
+                        dialog.volume = volumeSlider.progress
+                        dialog.show()
                     }else{
                         volumeBar.visibility = VISIBLE
                     }
@@ -327,11 +343,22 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         volumeBtn.typeface = typeface
         volumeBtn.setOnClickListener {
             showControlBar()
-            if (volumeBar.visibility == VISIBLE) {
-                volumeBar.visibility = INVISIBLE
+
+            if (height < context.resources.displayMetrics.density * 130) {
+                val dialog = VolumeControlDialog(context)
+                dialog.title = "音量调节: ${playerNameBtn.text}"
+                dialog.onSeekBarListener = volumeChangedListener
+                dialog.volume = volumeSlider.progress
+                dialog.show()
             }else{
-                volumeBar.visibility = VISIBLE
+                if (volumeBar.visibility == VISIBLE) {
+                    volumeBar.visibility = INVISIBLE
+                }else{
+                    volumeBar.visibility = VISIBLE
+                }
             }
+
+
         }
         danmuBtn = findViewById(R.id.danmu_btn)
         danmuBtn.typeface = typeface
@@ -342,22 +369,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 //        volumeSlider.addOnChangeListener { slider, value, fromUser ->
 //            player?.volume = if (isGlobalMuted) 0f else value/100f
 //        }
-        volumeSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
-                player?.volume = if (isGlobalMuted) 0f else p1.toFloat()/100f
-            }
-
-            override fun onStartTrackingTouch(p0: SeekBar?) {
-                volumeAdjusting = true
-            }
-
-            override fun onStopTrackingTouch(p0: SeekBar?) {
-                volumeAdjusting = false
-                showControlBar()
-                playerOptions.volume = volumeSlider.progress.toFloat()/100f
-                notifyPlayerOptionsChange()
-            }
-        })
+        volumeSlider.setOnSeekBarChangeListener(volumeChangedListener)
 
         val muteBtn = findViewById<Button>(R.id.mute_btn)
         muteBtn.typeface = typeface
@@ -484,7 +496,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 try {
                                     Picasso.get().load(face).transform(RoundImageTransform())
                                         .into(shadowFaceImg)
-                                }catch (e: Exception) {}
+                                }catch (e: Exception) {
+                                    shadowFaceImg.setImageDrawable(null)
+                                }
 
                             }
 //                            val msg = Message()

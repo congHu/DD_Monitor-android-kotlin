@@ -6,10 +6,10 @@ import android.content.res.Configuration
 import android.graphics.*
 import android.net.Uri
 import android.os.Bundle
-import android.os.PowerManager
 import android.text.InputType
 import android.util.Log
 import android.view.*
+import android.view.inputmethod.EditorInfo
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +21,7 @@ import com.hyc.dd_monitor.utils.RoundImageTransform
 import com.hyc.dd_monitor.views.DDLayout
 import com.hyc.dd_monitor.views.DanmuOptionsDialog
 import com.hyc.dd_monitor.views.LayoutOptionsDialog
+import com.hyc.dd_monitor.views.UidImportDialog
 import com.squareup.picasso.Picasso
 import okhttp3.*
 import org.json.JSONObject
@@ -40,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var uplistview: ListView
     lateinit var uplistviewAdapter: BaseAdapter
 
-    lateinit var cancelDragView: TextView
+    lateinit var cancelDragView: Button
 
     lateinit var drawer: DrawerLayout
     lateinit var drawerContent: LinearLayout
@@ -192,7 +193,9 @@ class MainActivity : AppCompatActivity() {
                         Picasso.get().load(upInfo?.faceImageUrl).transform(RoundImageTransform()).into(face)
                         Picasso.get().load(upInfo?.faceImageUrl).transform(RoundImageTransform()).into(shadow)
                     }catch (e: Exception) {
-
+                        cover.setImageDrawable(null)
+                        face.setImageDrawable(null)
+                        shadow.setImageDrawable(null)
                     }
 
 //                    upInfo!!.coverImageUrl?.let {
@@ -206,10 +209,16 @@ class MainActivity : AppCompatActivity() {
                     if (upInfo?.uname != null) {
                         uname.text = upInfo.uname
                         uname.setBackgroundColor(Color.TRANSPARENT)
+                    }else{
+                        uname.text = ""
+                        uname.setBackgroundColor(Color.BLACK)
                     }
                     if (upInfo?.title != null) {
                         title.text = upInfo.title
                         title.setBackgroundColor(Color.TRANSPARENT)
+                    }else{
+                        title.text = ""
+                        title.setBackgroundColor(Color.BLACK)
                     }
 
                     if (upInfo?.isLive == true) {
@@ -239,6 +248,9 @@ class MainActivity : AppCompatActivity() {
             }
             return@setOnDragListener true
         }
+        cancelDragView.setOnClickListener {
+            cancelDragView.visibility = View.GONE
+        }
 
         // 卡片拖拽
         uplistview.setOnItemLongClickListener { adapterView, view, i, l ->
@@ -247,7 +259,7 @@ class MainActivity : AppCompatActivity() {
             val clipData = ClipData("roomId", arrayOf(ClipDescription.MIMETYPE_TEXT_PLAIN), ClipData.Item(uplist[i]))
             clipData.addItem(ClipData.Item(upinfos[uplist[i]]?.faceImageUrl))
 
-            view.startDragAndDrop(clipData, View.DragShadowBuilder(view.findViewById(R.id.shadow_imageview)), null, View.DRAG_FLAG_GLOBAL)
+            view.startDragAndDrop(clipData, View.DragShadowBuilder(view.findViewById(R.id.shadow_view)), null, View.DRAG_FLAG_GLOBAL)
 
             drawer.closeDrawers()
             cancelDragView.visibility = View.VISIBLE
@@ -459,45 +471,40 @@ class MainActivity : AppCompatActivity() {
             val et = EditText(this)
             et.inputType = InputType.TYPE_CLASS_NUMBER
             AlertDialog.Builder(this)
-                .setTitle("直播间id")
+                .setTitle("添加直播间id")
+                .setMessage("提示：输入完成可按回车键/换行键，此窗口不关闭，可继续输入添加。")
                 .setView(et)
                 .setPositiveButton("确定") { _, _ ->
-                    val roomId = et.text.toString().toIntOrNull()
-                    if (roomId == null) {
-                        Toast.makeText(this@MainActivity, "无效的id", Toast.LENGTH_SHORT).show()
-                        return@setPositiveButton
-                    }
-
-                    if (uplist.contains(roomId.toString())) {
-                        Toast.makeText(this@MainActivity, "已存在", Toast.LENGTH_SHORT).show()
-                        return@setPositiveButton
-                    }
-
-                    loadUpInfo(roomId.toString()) { realRoomId ->
-                        if (uplist.contains(realRoomId)) {
-                            runOnUiThread {
-                                Toast.makeText(this@MainActivity, "已存在", Toast.LENGTH_SHORT).show()
-                            }
-                            return@loadUpInfo
-                        }
-
-
-//                        Log.d("getSharedPreferences", uplist.joinToString(" "))
-//                        editor.putString("uplist", uplist.joinToString(" "))
-//                        editor.commit()
-                        runOnUiThread {
-                            uplist.add(0, realRoomId)
-                            getSharedPreferences("sp", MODE_PRIVATE).edit {
-                                this.putString("uplist", uplist.joinToString(" ")).apply()
-                            }
-//                            uplistview.invalidateViews()
-                            uplistviewAdapter.notifyDataSetInvalidated()
-                        }
-                    }
+                    addRoomId(et.text.toString())
                 }
                 .setNegativeButton("取消",null)
                 .show()
 //            et.requestFocus()
+
+            et.setOnEditorActionListener { textView, i, keyEvent ->
+                Log.d("imeaction", i.toString())
+                if (i == EditorInfo.IME_ACTION_DONE) {
+                    addRoomId(et.text.toString(), true)
+                    et.text.clear()
+                }
+                return@setOnEditorActionListener true
+            }
+        }
+
+        findViewById<Button>(R.id.uid_import_btn).setOnClickListener {
+            val dialog = UidImportDialog(this)
+            dialog.onImportFinishedListener = { set ->
+                uplist.addAll(set)
+                uplistviewAdapter.notifyDataSetInvalidated()
+                for (up in set) {
+                    loadUpInfo(up)
+                }
+                getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
+                    this.putString("uplist", uplist.joinToString(" ")).apply()
+                }
+                Toast.makeText(this, "已添加${set.size}项", Toast.LENGTH_SHORT).show()
+            }
+            dialog.show()
         }
 
 //        val timer = Timer()
@@ -529,6 +536,40 @@ class MainActivity : AppCompatActivity() {
         for (p in 0 until ddLayout.layoutPlayerCount) {
             ddLayout.post {
                 ddLayout.players[p].adjustControlBar()
+            }
+        }
+    }
+
+    fun addRoomId(id: String, promt: Boolean = false) {
+        val roomId = id.toIntOrNull()
+        if (roomId == null) {
+            Toast.makeText(this, "无效的id $id", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        if (uplist.contains(roomId.toString())) {
+            Toast.makeText(this, "已存在 $id", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        loadUpInfo(roomId.toString()) { realRoomId ->
+            if (uplist.contains(realRoomId)) {
+                runOnUiThread {
+                    Toast.makeText(this, "已存在 $id", Toast.LENGTH_SHORT).show()
+                }
+                return@loadUpInfo
+            }
+
+            runOnUiThread {
+                uplist.add(0, realRoomId)
+                getSharedPreferences("sp", MODE_PRIVATE).edit {
+                    this.putString("uplist", uplist.joinToString(" ")).apply()
+                }
+                uplistviewAdapter.notifyDataSetInvalidated()
+
+                if (promt) {
+                    Toast.makeText(this, "已添加id $id", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -586,7 +627,7 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     runOnUiThread {
-                        Toast.makeText(this@MainActivity, "查询id失败", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "查询id失败 $roomId", Toast.LENGTH_SHORT).show()
                     }
                 }
             }

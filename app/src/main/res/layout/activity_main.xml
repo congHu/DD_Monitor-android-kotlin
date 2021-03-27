@@ -119,7 +119,7 @@
                     android:id="@+id/uplist_btn"
                     />
             </LinearLayout>
-            <TextView
+            <Button
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:text="取消拖动"
@@ -172,6 +172,17 @@
                 android:minHeight="0dp"
                 android:minWidth="0dp"
                 android:textColor="#fff"
+                />
+            <Button
+                android:layout_width="60dp"
+                android:layout_height="32dp"
+                android:text="导入"
+                android:id="@+id/uid_import_btn"
+                android:background="@drawable/default_btn_night"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:textColor="#fff"
+                android:layout_marginLeft="2dp"
                 />
         </LinearLayout>
         <ListView

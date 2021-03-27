@@ -25,7 +25,7 @@
 - [x] 同传弹幕过滤
 - [x] 双击窗口全屏
 - [ ] 前台开播提醒功能
-- [ ] uid导入公开关注列表
+- [x] uid导入公开关注列表
 
 ## 开源依赖
 - [https://github.com/square/okhttp](https://github.com/square/okhttp)

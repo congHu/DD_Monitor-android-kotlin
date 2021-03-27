@@ -2,14 +2,11 @@ package com.hyc.dd_monitor.views
 
 import android.content.Context
 import android.util.Log
-import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.edit
-import androidx.core.view.children
-import com.hyc.dd_monitor.R
 
 class DDLayout(context: Context?) : LinearLayout(context) {
     var layoutId : Int = 4
