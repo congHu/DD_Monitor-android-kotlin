@@ -27,6 +27,9 @@
 - [ ] 前台开播提醒功能
 - [x] uid导入公开关注列表
 
+## 给开发者买杯奶茶
+[qrcode.png](qrcode.png)
+
 ## 开源依赖
 - [https://github.com/square/okhttp](https://github.com/square/okhttp)
 - [https://github.com/square/picasso](https://github.com/square/picasso)
