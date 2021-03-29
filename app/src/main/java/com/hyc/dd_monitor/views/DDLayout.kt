@@ -135,10 +135,11 @@ class DDLayout(context: Context?) : LinearLayout(context) {
             v?.addView(p)
 
             if (v != null) {
-                if (fullScreenPlayerId != null && p.roomId != null) { // 判断是否双击全屏触发的
-                    p.roomId = p.roomId
-                }else if (p.roomId == null) {
-                    p.roomId = context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getString("roomId${i-1}", null)
+//                if (fullScreenPlayerId != null && p.roomId != null) { // 判断是否双击全屏触发的
+//                    p.roomId = p.roomId
+//                }else
+                if (p.roomId == null) {
+                    p.roomId = context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getString("roomId${p.playerId}", null)
                 }
 
                 post {
