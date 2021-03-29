@@ -63,7 +63,7 @@ class UidImportDialog(context: Context) : Dialog(context) {
 
                 val isLiveCover = view.findViewById<TextView>(R.id.up_islive_cover)
 
-                val checkbox = view.findViewById<TextView>(R.id.up_checkbox)
+                val checkbox = view.findViewById<FrameLayout>(R.id.up_checkbox)
 //                checkbox.visibility = View.VISIBLE
 //                checkbox.setOnCheckedChangeListener { compoundButton, b ->
 //

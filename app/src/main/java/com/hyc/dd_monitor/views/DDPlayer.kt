@@ -35,6 +35,7 @@ import kotlin.math.roundToInt
 
 class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
+    // 设置窗口序号#
     var playerId: Int = playerId
         set(value) {
             playerNameBtn.text = playerNameBtn.text.replace(Regex("#${field + 1}"), "#${value+1}")
@@ -45,6 +46,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
     var playerOptions = PlayerOptions()
 
+    // 刷新画质
     var qn: Int = 80
         set(value) {
             if (field != value) {
@@ -92,6 +94,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var volumeBtn: Button
     var danmuBtn: Button
 
+    // 设置是否全局静音
     var isGlobalMuted = false
         set(value) {
             field = value
@@ -182,6 +185,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
         }
 
+        // 音量调节
         val volumeChangedListener = object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
                 player?.volume = if (isGlobalMuted) 0f else p1.toFloat()/100f
@@ -211,6 +215,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         playerNameBtn.text = "#${playerId+1}: 空"
         shadowTextView.text = "#${playerId+1}"
 
+        // 点击窗口名称弹出菜单
         playerNameBtn.setOnClickListener {
             if (roomId == null) return@setOnClickListener
             val pop = PopupMenu(context, playerNameBtn)
@@ -239,6 +244,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     }
 
                 }
+                // 下面是工具栏宽度不足时，要呈现的菜单项
                 if (it.itemId == R.id.refresh_btn) {
                     this.roomId = roomId
                 }
@@ -264,8 +270,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             pop.show()
         }
 
-
-
+        // 长按拖动功能
         setOnLongClickListener {
             showControlBar()
 
@@ -280,26 +285,28 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             return@setOnLongClickListener true
         }
 
+        // 接收拖放
         setOnDragListener { view, dragEvent ->
             if (dragEvent.action == DragEvent.ACTION_DROP) {
                 Log.d("drop", dragEvent.clipData.description.label.toString())
                 val label = dragEvent.clipData.description.label.toString()
-                if (label == "layoutId") {
+
+                if (label == "layoutId") { // 从其他窗口拖放进来
                     val dragPid = dragEvent.clipData.getItemAt(0).text.toString().toInt()
                     Log.d("drop", "isSelf? $dragPid ${this.playerId}")
-                    if (dragPid != this.playerId) {
+                    if (dragPid != this.playerId) { // 判断不是自己拖放给自己
                         Log.d("drop", "change $dragPid")
+                        // 与其他窗口交换，交给上级ddlayout处理
                         onDragAndDropListener?.invoke(dragPid, this.playerId)
 //                        this.playerId = dragPid
 //                        showControlBar()
                     }
-                }else if (label == "roomId") {
-//                    showControlBar()
-
+                }else if (label == "roomId") { // 从列表的卡片拖动进来
+                    // roomId setter 开始播放
                     roomId = dragEvent.clipData.getItemAt(0).text.toString()
                     val face = dragEvent.clipData.getItemAt(1).text.toString()
                     try {
-                        Picasso.get().load(face).transform(RoundImageTransform()).into(shadowFaceImg)
+                        Picasso.get().load(face).transform(RoundImageTransform()).into(shadowFaceImg) // 用于拖动的头像view
                     }catch (e: Exception) {}
 //                    Log.d("shadowFaceImg", shadowFaceImg)
                     onCardDropListener?.invoke()
@@ -309,6 +316,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                 }
 //                Log.d("drop $playerId", dragEvent.clipData.getItemAt(0).text.toString())
             }
+            // 拖动进入的时候显示一下东西
             if (dragEvent.action == DragEvent.ACTION_DRAG_ENTERED) {
                 showControlBar()
             }
@@ -316,6 +324,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
 
         setOnClickListener {
+            // 单击显示/隐藏工具条
             if (controlBar.visibility == VISIBLE) {
                 controlBar.visibility = INVISIBLE
             }else{
@@ -323,10 +332,11 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             }
             volumeBar.visibility = INVISIBLE
 
+            // 双击全屏
             if (System.currentTimeMillis() - doubleClickTime < 300) {
                 doubleClickTime = 0
                 Log.d("doubleclick", "doubleclick")
-                onDoubleClickListener?.invoke(this.playerId)
+                onDoubleClickListener?.invoke(this.playerId) // 全屏需要刷新layout
             }else{
                 doubleClickTime = System.currentTimeMillis()
             }
@@ -334,11 +344,14 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
         val typeface = Typeface.createFromAsset(context.assets, "iconfont.ttf")
 
+        // 刷新按钮
         refreshBtn = findViewById<Button>(R.id.refresh_btn)
         refreshBtn.typeface = typeface
         refreshBtn.setOnClickListener {
             this.roomId = roomId
         }
+
+        // 音量按钮
         volumeBtn = findViewById<Button>(R.id.volume_btn)
         volumeBtn.typeface = typeface
         volumeBtn.setOnClickListener {
@@ -360,6 +373,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
 
         }
+        // 弹幕按钮
         danmuBtn = findViewById(R.id.danmu_btn)
         danmuBtn.typeface = typeface
         danmuBtn.setOnClickListener {
@@ -371,6 +385,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 //        }
         volumeSlider.setOnSeekBarChangeListener(volumeChangedListener)
 
+        // 静音按钮
         val muteBtn = findViewById<Button>(R.id.mute_btn)
         muteBtn.typeface = typeface
         muteBtn.setOnClickListener {
@@ -387,10 +402,12 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
         }
 
+        // 画质按钮
         qnBtn.setOnClickListener {
             showQnMenu()
         }
 
+        // 读取播放器设置
         context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).getString("opts${this.playerId}", "")?.let {
             try {
                 Log.d("playeroptions", "load $it")
@@ -439,14 +456,20 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var socket: WebSocket? = null
     var socketTimer: Timer? = null
 
+    /**
+     * roomId setter 设置后立即开始加载播放
+     */
     var roomId: String? = null
         set(value) {
             if (field != value) {
+                // 新的id则弹幕清屏
                 danmuList.removeAll(danmuList)
 //                danmuListView.invalidateViews()
                 danmuListViewAdapter.notifyDataSetInvalidated()
             }
             field = value
+
+            // 初始化播放器相关、弹幕socket相关的对象
             playerView.player = null
             player?.stop()
             socketTimer?.cancel()
@@ -461,13 +484,16 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             playerNameBtn.text = "#${playerId+1}: 空"
             shadowTextView.text = "#${playerId+1}"
 
+            // set null 表示关闭了当前的播放 窗口置空
             if (value == null) {
                 return
             }
 
+            // 到这了就表示不为空了，开始加载
+
             playerNameBtn.text = "#${playerId+1}: 加载中"
 
-
+            // 加载基础信息
             OkHttpClient().newCall(
                 Request.Builder()
                     .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$value")
@@ -501,218 +527,6 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 }
 
                             }
-//                            val msg = Message()
-//                            msg.what = 1
-//                            msg.obj = "#${playerId + 1}: $liveStatus$uname"
-//                            myHandler.sendMessage(msg)
-
-
-                            OkHttpClient().newCall(
-                                Request.Builder()
-                                    .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
-                                    .build()
-                            ).enqueue(object : Callback {
-                                override fun onFailure(call: Call, e: IOException) {
-
-                                }
-
-                                override fun onResponse(call: Call, response: Response) {
-                                    response.body?.let { it2 ->
-                                        val jo1 = JSONObject(it2.string())
-                                        jo1.optJSONObject("data")?.let { data1 ->
-                                            val url = data1.getJSONArray("durl").getJSONObject(0)
-                                                .getString(
-                                                    "url"
-                                                )
-                                            handler.post {
-                                                player = SimpleExoPlayer.Builder(context).build()
-                                                playerView.player = player
-                                                player!!.setMediaItem(MediaItem.fromUri(url))
-                                                player!!.volume =
-                                                    if (isGlobalMuted) 0f else volumeSlider.progress.toFloat() / 100f
-                                                player!!.playWhenReady = true
-                                                player!!.prepare()
-                                            }
-//                                            val msg2 = Message()
-//                                            msg2.what = 2
-//                                            msg2.obj = url
-//                                            myHandler.sendMessage(msg2)
-
-                                        }
-
-                                    }
-                                }
-
-                            })
-
-                            socket = OkHttpClient.Builder().build().newWebSocket(Request.Builder()
-                                .url(
-                                    "wss://broadcastlv.chat.bilibili.com:2245/sub"
-                                ).build(), object : WebSocketListener() {
-                                override fun onOpen(webSocket: WebSocket, response: Response) {
-                                    super.onOpen(webSocket, response)
-                                    Log.d("danmu", "open")
-                                    val req = "{\"roomid\":$value}"
-                                    val payload = ByteArray(16 + req.length)
-
-                                    val head = byteArrayOf(
-                                        0x00, 0x00, 0x00, (16 + req.length).toByte(),
-                                        0x00, 0x10, 0x00, 0x01,
-                                        0x00, 0x00, 0x00, 0x07,
-                                        0x00, 0x00, 0x00, 0x01
-                                    )
-
-                                    System.arraycopy(head, 0, payload, 0, head.size)
-                                    val reqBytes = req.toByteArray()
-                                    System.arraycopy(
-                                        reqBytes,
-                                        0,
-                                        payload,
-                                        head.size,
-                                        reqBytes.size
-                                    )
-
-                                    socket?.send(payload.toByteString(0, payload.size))
-
-                                    socketTimer = Timer()
-                                    socketTimer!!.schedule(object : TimerTask() {
-                                        override fun run() {
-                                            Log.d("danmu", "heartbeat")
-                                            socket?.send(
-                                                byteArrayOf(
-                                                    0x00, 0x00, 0x00, 0x10,
-                                                    0x00, 0x10, 0x00, 0x01,
-                                                    0x00, 0x00, 0x00, 0x02,
-                                                    0x00, 0x00, 0x00, 0x01
-                                                ).toByteString()
-                                            )
-                                        }
-
-                                    }, 0, 30000)
-                                }
-
-                                override fun onMessage(
-                                    webSocket: WebSocket,
-                                    bytes: ByteString
-                                ) {
-                                    super.onMessage(webSocket, bytes)
-                                    val byteArray = bytes.toByteArray()
-                                    if (byteArray[7] == 2.toByte()) {
-//                                        val infalter = Inflater()
-//                                        infalter.setInput(byteArray,16,byteArray.size-16)
-
-                                        val bis = ByteArrayInputStream(
-                                            byteArray,
-                                            16,
-                                            byteArray.size - 16
-                                        )
-                                        val iis = InflaterInputStream(bis)
-                                        val buf = ByteArray(1024)
-
-                                        val bos = ByteArrayOutputStream()
-
-
-                                        while (true) {
-                                            val c = iis.read(buf)
-                                            if (c == -1) break
-                                            bos.write(buf, 0, c)
-                                        }
-                                        bos.flush()
-                                        iis.close()
-
-//                                        val strRes = String(bos.toByteArray(), Charsets.UTF_8)
-//                                        Log.d("danmu", strRes)
-                                        val unzipped = bos.toByteArray()
-                                        var len = 0
-                                        try {
-                                            while (len < unzipped.size) {
-                                                var b2 = unzipped[len + 2].toInt()
-                                                if (b2 < 0) b2 += 256
-                                                var b3 = unzipped[len + 3].toInt()
-                                                if (b3 < 0) b3 += 256
-
-                                                val nextLen = b2 * 256 + b3
-                                                val jstr = String(
-                                                    unzipped,
-                                                    len + 16,
-                                                    len + nextLen,
-                                                    Charsets.UTF_8
-                                                )
-                                                val jobj = JSONObject(jstr)
-                                                if (jobj.getString("cmd") == "DANMU_MSG") {
-                                                    val danmu =
-                                                        jobj.getJSONArray("info").getString(1)
-                                                    Log.d("danmu", "$value $danmu")
-                                                    handler.post {
-                                                        if (danmuList.count() > 20) {
-                                                            danmuList.removeFirst()
-                                                        }
-                                                        danmuList.add(danmu)
-//                                                        danmuListView.deferNotifyDataSetChanged()
-//                                                        danmuListView.invalidateViews()
-                                                        danmuListViewAdapter.notifyDataSetInvalidated()
-                                                        danmuListView.setSelection(danmuListView.bottom)
-
-                                                        if (danmu.startsWith("【")
-                                                            || danmu.startsWith("[")
-                                                            || danmu.startsWith("{[}")
-                                                        ) {
-                                                            if (interpreterList.count() > 20) {
-                                                                interpreterList.removeFirst()
-                                                            }
-                                                            interpreterList.add(danmu)
-//                                                            interpreterListView.deferNotifyDataSetChanged()
-//                                                            interpreterListView.invalidateViews()
-                                                            interpreterViewAdapter.notifyDataSetInvalidated()
-                                                            interpreterListView.setSelection(interpreterListView.bottom)
-                                                        }
-                                                    }
-//                                                    val msg3 = Message()
-//                                                    msg3.what = 3
-//                                                    msg3.obj = danmu
-//                                                    myHandler.sendMessage(msg3)
-                                                }
-
-                                                len += nextLen
-                                            }
-                                        } catch (e: Exception) {
-
-                                        }
-
-                                    }
-
-                                }
-
-                                override fun onFailure(
-                                    webSocket: WebSocket,
-                                    t: Throwable,
-                                    response: Response?
-                                ) {
-                                    super.onFailure(webSocket, t, response)
-                                    Log.d("danmu", "fail ${t.message}")
-                                    t.printStackTrace()
-                                }
-
-                                override fun onClosing(
-                                    webSocket: WebSocket,
-                                    code: Int,
-                                    reason: String
-                                ) {
-                                    super.onClosing(webSocket, code, reason)
-                                    Log.d("danmu", "closing")
-
-                                }
-
-                                override fun onClosed(
-                                    webSocket: WebSocket,
-                                    code: Int,
-                                    reason: String
-                                ) {
-                                    super.onClosed(webSocket, code, reason)
-                                    Log.d("danmu", "close")
-
-                                }
-                            })
 
                         }
 
@@ -720,8 +534,210 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                 }
 
             })
+
+            // 加载视频流信息
+            OkHttpClient().newCall(
+                    Request.Builder()
+                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
+                            .build()
+            ).enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    response.body?.let { it2 ->
+                        val jo1 = JSONObject(it2.string())
+                        jo1.optJSONObject("data")?.let { data1 ->
+                            val url = data1.getJSONArray("durl").getJSONObject(0)
+                                    .getString(
+                                            "url"
+                                    )
+                            handler.post {
+                                player = SimpleExoPlayer.Builder(context).build()
+                                playerView.player = player
+                                player!!.setMediaItem(MediaItem.fromUri(url))
+                                player!!.volume =
+                                        if (isGlobalMuted) 0f else volumeSlider.progress.toFloat() / 100f
+                                player!!.playWhenReady = true
+                                player!!.prepare()
+                            }
+
+                        }
+
+                    }
+                }
+
+            })
+
+            // 连接弹幕socket
+            socket = OkHttpClient.Builder().build().newWebSocket(Request.Builder()
+                    .url(
+                            "wss://broadcastlv.chat.bilibili.com:2245/sub"
+                    ).build(), object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    super.onOpen(webSocket, response)
+                    Log.d("danmu", "open")
+
+                    // 连接成功，发送加入直播间的请求
+                    val req = "{\"roomid\":$value}"
+                    val payload = ByteArray(16 + req.length)
+
+                    val head = byteArrayOf(
+                            0x00, 0x00, 0x00, (16 + req.length).toByte(),
+                            0x00, 0x10, 0x00, 0x01,
+                            0x00, 0x00, 0x00, 0x07,
+                            0x00, 0x00, 0x00, 0x01
+                    )
+
+                    System.arraycopy(head, 0, payload, 0, head.size)
+                    val reqBytes = req.toByteArray()
+                    System.arraycopy(
+                            reqBytes,
+                            0,
+                            payload,
+                            head.size,
+                            reqBytes.size
+                    )
+
+                    socket?.send(payload.toByteString(0, payload.size))
+
+                    // 开始心跳包发送
+                    socketTimer = Timer()
+                    socketTimer!!.schedule(object : TimerTask() {
+                        override fun run() {
+                            Log.d("danmu", "heartbeat")
+                            socket?.send(
+                                    byteArrayOf(
+                                            0x00, 0x00, 0x00, 0x10,
+                                            0x00, 0x10, 0x00, 0x01,
+                                            0x00, 0x00, 0x00, 0x02,
+                                            0x00, 0x00, 0x00, 0x01
+                                    ).toByteString()
+                            )
+                        }
+
+                    }, 0, 30000)
+                }
+
+                override fun onMessage(
+                        webSocket: WebSocket,
+                        bytes: ByteString
+                ) {
+                    super.onMessage(webSocket, bytes)
+                    val byteArray = bytes.toByteArray()
+                    if (byteArray[7] == 2.toByte()) {
+
+                        // 解压
+                        val bis = ByteArrayInputStream(
+                                byteArray,
+                                16,
+                                byteArray.size - 16
+                        )
+                        val iis = InflaterInputStream(bis)
+                        val buf = ByteArray(1024)
+
+                        val bos = ByteArrayOutputStream()
+
+
+                        while (true) {
+                            val c = iis.read(buf)
+                            if (c == -1) break
+                            bos.write(buf, 0, c)
+                        }
+                        bos.flush()
+                        iis.close()
+
+                        val unzipped = bos.toByteArray()
+
+                        // 解压后是多条json连在一条字符串里，可根据每一条json前面16个字节的头，获取到每条json的长度
+                        var len = 0
+                        try {
+                            while (len < unzipped.size) {
+                                var b2 = unzipped[len + 2].toInt()
+                                if (b2 < 0) b2 += 256
+                                var b3 = unzipped[len + 3].toInt()
+                                if (b3 < 0) b3 += 256
+
+                                val nextLen = b2 * 256 + b3
+                                val jstr = String(
+                                        unzipped,
+                                        len + 16,
+                                        len + nextLen,
+                                        Charsets.UTF_8
+                                )
+                                val jobj = JSONObject(jstr)
+                                if (jobj.getString("cmd") == "DANMU_MSG") {
+                                    val danmu =
+                                            jobj.getJSONArray("info").getString(1)
+                                    Log.d("danmu", "$value $danmu")
+                                    handler.post {
+                                        // 弹幕目前最多显示20条，是否要搞一个设置项？
+                                        if (danmuList.count() > 20) {
+                                            danmuList.removeFirst()
+                                        }
+                                        danmuList.add(danmu)
+                                        danmuListViewAdapter.notifyDataSetInvalidated()
+                                        danmuListView.setSelection(danmuListView.bottom)
+
+                                        // 过滤同传弹幕
+                                        if (danmu.startsWith("【")
+                                                || danmu.startsWith("[")
+                                                || danmu.startsWith("{[}")
+                                        ) {
+                                            if (interpreterList.count() > 20) {
+                                                interpreterList.removeFirst()
+                                            }
+                                            interpreterList.add(danmu)
+                                            interpreterViewAdapter.notifyDataSetInvalidated()
+                                            interpreterListView.setSelection(interpreterListView.bottom)
+                                        }
+                                    }
+                                }
+
+                                len += nextLen
+                            }
+                        } catch (e: Exception) {
+
+                        }
+
+                    }
+
+                }
+
+                override fun onFailure(
+                        webSocket: WebSocket,
+                        t: Throwable,
+                        response: Response?
+                ) {
+                    super.onFailure(webSocket, t, response)
+                    Log.d("danmu", "fail ${t.message}")
+                    t.printStackTrace()
+                }
+
+                override fun onClosing(
+                        webSocket: WebSocket,
+                        code: Int,
+                        reason: String
+                ) {
+                    super.onClosing(webSocket, code, reason)
+                    Log.d("danmu", "closing")
+
+                }
+
+                override fun onClosed(
+                        webSocket: WebSocket,
+                        code: Int,
+                        reason: String
+                ) {
+                    super.onClosed(webSocket, code, reason)
+                    Log.d("danmu", "close")
+
+                }
+            })
         }
 
+    // 宽高变化时调用，调整工具条，使得按钮隐藏，不超出宽度
     fun adjustControlBar() {
         Log.d("ddplayer", "width $width ${context.resources.displayMetrics.density}")
         if (width < context.resources.displayMetrics.density * 30 * 5) {
@@ -739,6 +755,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
     }
 
+    // 每当修改了播放器设置，做出相应的界面改变，然后保存设置
     fun notifyPlayerOptionsChange() {
         volumeSlider.progress = (playerOptions.volume * 100f).roundToInt()
         player?.volume = if (isGlobalMuted) 0f else playerOptions.volume
@@ -774,6 +791,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
     }
 
+    // 显示工具条，然后自动隐藏
     fun showControlBar() {
         controlBar.visibility = VISIBLE
         hideControlTimer?.cancel()

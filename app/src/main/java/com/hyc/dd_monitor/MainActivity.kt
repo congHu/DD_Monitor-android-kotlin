@@ -16,6 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.drawerlayout.widget.DrawerLayout
+import com.google.gson.Gson
 import com.hyc.dd_monitor.models.UPInfo
 import com.hyc.dd_monitor.utils.RoundImageTransform
 import com.hyc.dd_monitor.views.DDLayout
@@ -24,6 +25,8 @@ import com.hyc.dd_monitor.views.LayoutOptionsDialog
 import com.hyc.dd_monitor.views.UidImportDialog
 import com.squareup.picasso.Picasso
 import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 import java.net.URL
@@ -62,6 +65,8 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d("resume", "onResume")
+
+        // 屏幕常亮
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         window.decorView.post {
@@ -69,6 +74,7 @@ class MainActivity : AppCompatActivity() {
 //                ddLayout.players[p].adjustControlBar()
 //            }
 
+            // 获取剪贴板，需要post之后才能获取到
             (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager)?.let {
                 it.primaryClip?.let { clip ->
                     Log.d("clipboard", clip.itemCount.toString())
@@ -82,9 +88,11 @@ class MainActivity : AppCompatActivity() {
                         Log.d("clipboard", clipboard)
                         lastClipboard = clipboard
                         try {
+                            // 检查剪贴板是url格式，而且是b站直播链接
                             val url = URL(clipboard)
                             if (url.host == "live.bilibili.com") {
                                 Log.d("clipboard", url.path)
+                                // 是否需要正则匹配数字？
                                 val urlId = url.path.replace("/", "")
                                 urlId.toIntOrNull()?.let { roomId ->
                                     AlertDialog.Builder(this)
@@ -105,16 +113,20 @@ class MainActivity : AppCompatActivity() {
                                                     getSharedPreferences("sp", MODE_PRIVATE).edit {
                                                         this.putString("uplist", uplist.joinToString(" ")).apply()
                                                     }
-                                                    uplistview.invalidateViews()
+//                                                    uplistview.invalidateViews()
+                                                    uplistviewAdapter.notifyDataSetInvalidated()
                                                     drawer.openDrawer(drawerContent)
-                                                    for (up in uplist) {
-                                                        loadUpInfo(up)
-                                                    }
+//                                                    for (up in uplist) {
+//                                                        loadUpInfo(up)
+//                                                    }
+                                                    loadManyUpInfos()
                                                 }
                                             }
                                         }
                                         .setNegativeButton("否", null)
                                         .show()
+
+                                    // 删除剪贴板避免重复提醒
                                     it.setPrimaryClip(ClipData.newPlainText("",""))
                                 }
                             }
@@ -134,6 +146,7 @@ class MainActivity : AppCompatActivity() {
 
         Log.d("orientation", "onCreate: ")
 
+        // 安卓9/10以上申请存储权限
         ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.WRITE_EXTERNAL_STORAGE,android.Manifest.permission.READ_EXTERNAL_STORAGE), 111)
 
         drawer = findViewById(R.id.main_drawer)
@@ -141,11 +154,15 @@ class MainActivity : AppCompatActivity() {
 
         val dd = findViewById<LinearLayout>(R.id.stack_view)
         ddLayout = DDLayout(this)
+
+        // 拖放成功后 取消拖拽按钮消失
         ddLayout.onCardDropListener = {
             cancelDragView.visibility = View.GONE
         }
+
         dd.addView(ddLayout)
 
+        // 读取up列表
         getSharedPreferences("sp", MODE_PRIVATE).getString("uplist", "")?.let {
             uplist = it.split(" ").toMutableList()
             Log.d("uplist", it)
@@ -179,7 +196,7 @@ class MainActivity : AppCompatActivity() {
                 val face = view.findViewById<ImageView>(R.id.up_face_image)
                 val uname = view.findViewById<TextView>(R.id.up_uname_textview)
                 val title = view.findViewById<TextView>(R.id.up_title_textview)
-                val shadow = view.findViewById<ImageView>(R.id.shadow_imageview)
+                val shadow = view.findViewById<ImageView>(R.id.shadow_imageview) // 用于拖动的头像view
 
                 val isLiveCover = view.findViewById<TextView>(R.id.up_islive_cover)
 
@@ -189,13 +206,17 @@ class MainActivity : AppCompatActivity() {
                 if (upinfos.containsKey(roomId)) {
                     val upInfo = upinfos[roomId]
                     try {
-                        Picasso.get().load(upInfo?.coverImageUrl).into(cover)
+                        Picasso.get().load(upInfo?.faceImageUrl).transform(RoundImageTransform()).into(shadow) // 用于拖动的头像view
                         Picasso.get().load(upInfo?.faceImageUrl).transform(RoundImageTransform()).into(face)
-                        Picasso.get().load(upInfo?.faceImageUrl).transform(RoundImageTransform()).into(shadow)
                     }catch (e: Exception) {
-                        cover.setImageDrawable(null)
                         face.setImageDrawable(null)
                         shadow.setImageDrawable(null)
+                    }
+
+                    try {
+                        Picasso.get().load(upInfo?.coverImageUrl).into(cover)
+                    }catch (e: Exception) {
+                        cover.setImageDrawable(null)
                     }
 
 //                    upInfo!!.coverImageUrl?.let {
@@ -235,11 +256,13 @@ class MainActivity : AppCompatActivity() {
         }
         uplistview.adapter = uplistviewAdapter
 
+        // 取消拖拽按钮
         cancelDragView = findViewById(R.id.cancel_drag_view)
-        cancelDragView.setOnDragListener { view, dragEvent ->
+        cancelDragView.setOnDragListener { _, dragEvent ->
             if (dragEvent.action == DragEvent.ACTION_DROP) {
                 cancelDragView.visibility = View.GONE
             }
+            // 拖拽进入时高亮效果
             if (dragEvent.action == DragEvent.ACTION_DRAG_ENTERED) {
                 cancelDragView.setBackgroundColor(resources.getColor(R.color.teal_200, theme))
             }
@@ -248,11 +271,12 @@ class MainActivity : AppCompatActivity() {
             }
             return@setOnDragListener true
         }
+        // 折中方案 点击隐藏按钮
         cancelDragView.setOnClickListener {
             cancelDragView.visibility = View.GONE
         }
 
-        // 卡片拖拽
+        // 长按卡片拖拽
         uplistview.setOnItemLongClickListener { adapterView, view, i, l ->
             Log.d("long click", i.toString())
 
@@ -267,6 +291,7 @@ class MainActivity : AppCompatActivity() {
             return@setOnItemLongClickListener true
         }
 
+        // 单击卡片弹出菜单
         uplistview.setOnItemClickListener { adapterView, view, i, l ->
             val pop = PopupMenu(this, view)
             pop.menuInflater.inflate(R.menu.up_item_card, pop.menu)
@@ -300,27 +325,32 @@ class MainActivity : AppCompatActivity() {
 
         val typeface = Typeface.createFromAsset(assets, "iconfont.ttf")
 
+        // 全局刷新按钮
         val refreshBtn = findViewById<Button>(R.id.refresh_btn)
         refreshBtn.typeface = typeface
         refreshBtn.setOnClickListener {
             ddLayout.reloadLayout()
         }
 
+        // 全局静音按钮
         volumeBtn = findViewById<Button>(R.id.volume_btn)
         volumeBtn.typeface = typeface
         volumeBtn.setOnClickListener {
             isGlobalMuted = !isGlobalMuted
+            // 修改全部的音量
             for (p in ddLayout.players) {
                 p.isGlobalMuted = isGlobalMuted
             }
             volumeBtn.text = if (isGlobalMuted) "\ue607" else "\ue606"
         }
 
+        // 全局弹幕按钮
         val danmuBtn = findViewById<Button>(R.id.danmu_btn)
         danmuBtn.typeface = typeface
         danmuBtn.setOnClickListener {
             val dialog = DanmuOptionsDialog(this, null)
             dialog.onDanmuOptionsChangeListener = {
+                // 修改全部的弹幕设置
                 for (p in ddLayout.players) {
                     p.playerOptions = it
                     p.notifyPlayerOptionsChange()
@@ -329,6 +359,7 @@ class MainActivity : AppCompatActivity() {
             dialog.show()
         }
 
+        // 全局画质按钮
         val qnBtn = findViewById<Button>(R.id.qn_btn)
         qnBtn.setOnClickListener {
             val pop = PopupMenu(this, qnBtn)
@@ -342,7 +373,7 @@ class MainActivity : AppCompatActivity() {
                     R.id.qn_150 -> newQn = 150
                     R.id.qn_80 -> newQn = 80
                 }
-
+                // 修改全部的画质 setter自动刷新
                 for (p in ddLayout.players) {
                     p.qn = newQn
                 }
@@ -351,6 +382,7 @@ class MainActivity : AppCompatActivity() {
             pop.show()
         }
 
+        // 关于按钮
         val aboutBtn = findViewById<Button>(R.id.about_btn)
         aboutBtn.typeface = typeface
         aboutBtn.setOnClickListener {
@@ -377,6 +409,7 @@ class MainActivity : AppCompatActivity() {
 
         timerTextView = findViewById(R.id.timer_textview)
 
+        // 定时按钮
         val timerBtn = findViewById<Button>(R.id.timer_btn)
         timerBtn.typeface = typeface
         timerBtn.setOnClickListener {
@@ -410,14 +443,10 @@ class MainActivity : AppCompatActivity() {
             pop.show()
         }
 
+        // 横屏按钮
         val landScapeBtn = findViewById<Button>(R.id.landscape_btn)
         landScapeBtn.typeface = typeface
         landScapeBtn.setOnClickListener {
-
-//            for (p in ddLayout.players) {
-//                p.player?.stop()
-//            }
-
             requestedOrientation = if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE) {
                 ActivityInfo.SCREEN_ORIENTATION_USER
             }else{
@@ -425,11 +454,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // 切换布局按钮
         val layoutBtn = findViewById<Button>(R.id.layout_btn)
         layoutBtn.typeface = typeface
         layoutBtn.setOnClickListener {
             val dialog = LayoutOptionsDialog(this)
             dialog.onLayoutOptionsSelectedListener = {
+                // 判断是否是双击全屏的状态
                 if (ddLayout.layoutBeforeFullScreen != null) {
                     val target = ddLayout.players[ddLayout.fullScreenPlayerId!!]
                     ddLayout.players[ddLayout.fullScreenPlayerId!!] = ddLayout.players[0]
@@ -446,27 +477,30 @@ class MainActivity : AppCompatActivity() {
             dialog.show()
         }
 
+        // 打开up列表抽屉
         findViewById<Button>(R.id.uplist_btn).setOnClickListener {
 //            throw java.lang.Exception("oopss")
             drawer.openDrawer(drawerContent)
-            for (up in 0 until uplist.count()) {
-                loadUpInfo(uplist[up]) {
-                    if (it == uplist.last()) {
-                        uplist.sortByDescending { id ->
-                            upinfos[id]?.isLive
-                        }
-                        Log.d("sort", "sort")
-                        runOnUiThread {
-//                            uplistview.invalidateViews()
-                            uplistviewAdapter.notifyDataSetInvalidated()
-                        }
-                    }
-
-                }
-            }
+            loadManyUpInfos()
+//            for (up in 0 until uplist.count()) {
+//                loadUpInfo(uplist[up]) {
+//                    if (it == uplist.last()) {
+//                        uplist.sortByDescending { id ->
+//                            upinfos[id]?.isLive
+//                        }
+//                        Log.d("sort", "sort")
+//                        runOnUiThread {
+////                            uplistview.invalidateViews()
+//                            uplistviewAdapter.notifyDataSetInvalidated()
+//                        }
+//                    }
+//
+//                }
+//            }
 
         }
 
+        // 添加按钮
         findViewById<Button>(R.id.add_up_btn).setOnClickListener {
             val et = EditText(this)
             et.inputType = InputType.TYPE_CLASS_NUMBER
@@ -481,6 +515,7 @@ class MainActivity : AppCompatActivity() {
                 .show()
 //            et.requestFocus()
 
+            // 输入框监听回车键
             et.setOnEditorActionListener { textView, i, keyEvent ->
                 Log.d("imeaction", i.toString())
                 if (i == EditorInfo.IME_ACTION_DONE) {
@@ -491,14 +526,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // 导入按钮
         findViewById<Button>(R.id.uid_import_btn).setOnClickListener {
             val dialog = UidImportDialog(this)
             dialog.onImportFinishedListener = { set ->
                 uplist.addAll(set)
                 uplistviewAdapter.notifyDataSetInvalidated()
-                for (up in set) {
-                    loadUpInfo(up)
-                }
+//                for (up in set) {
+//                    loadUpInfo(up)
+//                }
+                loadManyUpInfos()
                 getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
                     this.putString("uplist", uplist.joinToString(" ")).apply()
                 }
@@ -507,32 +544,19 @@ class MainActivity : AppCompatActivity() {
             dialog.show()
         }
 
-//        val timer = Timer()
-//        timer.schedule(object : TimerTask() {
-//            override fun run() {
-//                if (roomIdToCheck == null) {
-//                    roomIdToCheck = uplist[0].
-//                }
-//                loadUpInfo(roomIdToCheck) {
-//                    if (isLiveMap.containsKey(up)) {
-//                        if (isLiveMap[up] == false && upinfos[up]?.isLive == true) {
-//                            runOnUiThread {
-//                                Log.d("isLive", "${upinfos[up]?.uname ?: "?"} 开播了")
-//                                Toast.makeText(this@MainActivity, "${upinfos[up]?.uname ?: "?"} 开播了", Toast.LENGTH_SHORT).show()
-//                            }
-//                        }
-//                    }else{
-//                        isLiveMap[up] = upinfos[up]?.isLive ?: false
-//                    }
-//
-//                }
-//            }
-//        }, 10000, 10000)
+        // 定时刷新 开播提醒
+        val timer = Timer()
+        timer.schedule(object : TimerTask() {
+            override fun run() {
+                loadManyUpInfos(true)
+            }
+        }, 30000, 30000)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         Log.d("orientation", "onConfigurationChanged")
+        // 横竖屏切换时触发，调整每个窗口的工具栏以适应当前宽度
         for (p in 0 until ddLayout.layoutPlayerCount) {
             ddLayout.post {
                 ddLayout.players[p].adjustControlBar()
@@ -574,6 +598,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 读取单个直播间信息 不可并发、不可频繁请求
     fun loadUpInfo(roomId: String, finished: ((realRoomId: String) -> Unit)? = null) {
         OkHttpClient().newCall(Request.Builder()
             .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$roomId").build()
@@ -583,6 +608,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onResponse(call: Call, response: Response) {
+                Log.d("loadinfo", roomId)
                 response.body?.let {
                     val jo = JSONObject(it.string())
                     jo.optJSONObject("data")?.let { data ->
@@ -635,6 +661,124 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    // 读取多条直播间信息
+    fun loadManyUpInfos(reportLiveStarting: Boolean = false) {
+        val postdata = "{\"ids\":[${uplist.joinToString(",")}]}"
+        Log.d("loadinfo", postdata)
+        val body = postdata.toRequestBody("application/json; charset=utf-8".toMediaType())
+        OkHttpClient().newCall(
+                Request.Builder()
+                        .url("https://api.live.bilibili.com/room/v2/Room/get_by_ids")
+                        .method("POST", body)
+                        .build()
+        ).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.let {
+                    try {
+                        val jo = JSONObject(it.string())
+                        val res = jo.getJSONObject("data")
+
+
+                        val uids = mutableListOf<Int>()
+                        for (k in res.keys()) {
+                            try {
+                                uids.add(res.getJSONObject(k).getInt("uid"))
+                            }catch (ex: Exception) {
+
+                            }
+                        }
+                        Log.d("loadinfo", uids.joinToString(","))
+                        val body1 = Gson().toJson(mapOf(Pair("uids", uids))).toRequestBody("application/json; charset=utf-8".toMediaType())
+                        OkHttpClient().newCall(
+                                Request.Builder()
+                                        .url("https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids")
+                                        .method("POST", body1)
+                                        .build()
+                        ).enqueue(object : Callback {
+                            override fun onFailure(call: Call, e: IOException) {
+
+                            }
+
+                            override fun onResponse(call: Call, response: Response) {
+                                response.body?.let { it1 ->
+                                    try {
+                                        val jo1 = JSONObject(it1.string())
+//                                        Log.d("loadinfo", jo1.toString())
+                                        val res1 = jo1.getJSONObject("data")
+                                        val reportLiveStartingList = mutableListOf<String>()
+
+                                        for (k in res1.keys()) {
+
+                                            var realRoomId: String? = null
+                                            val upInfo = UPInfo()
+                                            try {
+                                                val data = res1.getJSONObject(k)
+                                                realRoomId = data.getInt("room_id").toString()
+
+                                                upInfo.uname = data.getString("uname")
+
+                                                upInfo.isLive = data.getInt("live_status") == 1
+                                                if (upInfo.isLive && upinfos.containsKey(realRoomId) && upinfos[realRoomId]?.isLive == false) {
+                                                    reportLiveStartingList.add(upInfo.uname ?: "??")
+                                                }
+
+                                                upInfo.title = data.getString("title")
+
+                                                var face = data.getString("face")
+                                                if (face.startsWith("http://")) {
+                                                    face = face.replace("http://", "https://")
+                                                }
+                                                upInfo.faceImageUrl = face
+
+                                                var keyframe = data.getString("keyframe")
+                                                if (keyframe.startsWith("http://")) {
+                                                    keyframe = keyframe.replace("http://", "https://")
+                                                }
+                                                upInfo.coverImageUrl = keyframe
+
+
+                                            }catch (ex1: Exception) {
+
+                                            }
+
+                                            if (realRoomId != null) upinfos[realRoomId] = upInfo
+                                        }
+
+                                        uplist.sortByDescending { id ->
+                                            upinfos[id]?.isLive
+                                        }
+                                        runOnUiThread {
+                                            uplistviewAdapter.notifyDataSetInvalidated()
+                                            if (reportLiveStarting && reportLiveStartingList.count() > 0) {
+                                                Toast.makeText(this@MainActivity, "${reportLiveStartingList.joinToString(", ")} 开播了", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    }catch (e: Exception) {
+                                    }
+                                }
+
+                            }
+
+                        })
+
+
+                    }catch (e: Exception) {
+                        e.printStackTrace()
+//                        handler.post {
+//                            Toast.makeText(context, "查询uid失败", Toast.LENGTH_SHORT).show()
+//                        }
+                    }
+                }
+            }
+
+        })
+    }
+
+    // 设置定时关闭
     fun autoSleepTimerSet(min: Int) {
         autoSleepMinutes = min
         autoSleepTimer?.cancel()
@@ -678,6 +822,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 再按一次返回键退出
     var backPressTime: Long = 0
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) {

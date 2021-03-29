@@ -31,8 +31,11 @@ class DDLayout(context: Context?) : LinearLayout(context) {
 
         this.players = ArrayList()
 
+        // 开始就把最多9个对象准备好，交换窗口时无缝切换
         for (i in 0..8) {
             val p = DDPlayer(context!!, i)
+
+            // 处理窗口交换
             p.onDragAndDropListener = { drag, drop ->
                 Log.d("drop", "drag drop $drag $drop")
                 val dragViewId = context.resources.getIdentifier(
@@ -58,16 +61,16 @@ class DDLayout(context: Context?) : LinearLayout(context) {
                 players[drag] = players[drop]
                 players[drop] = temp
 
+                // 在post里面重新获取宽度调整工具栏，因为post之后获取的才是正确的宽度
                 post {
                     players[drag].adjustControlBar()
                     players[drop].adjustControlBar()
                 }
 
+                // 交换音量设置
                 val volume2 = players[drop].playerOptions.volume
-
                 players[drop].playerOptions.volume = players[drag].playerOptions.volume
                 players[drop].notifyPlayerOptionsChange()
-
                 players[drag].playerOptions.volume = volume2
                 players[drag].notifyPlayerOptionsChange()
 
@@ -110,6 +113,7 @@ class DDLayout(context: Context?) : LinearLayout(context) {
 
     var stackview: View? = null
 
+    // 重新刷新布局
     fun reloadLayout() {
         if (stackview != null) {
             removeView(stackview)
@@ -131,39 +135,21 @@ class DDLayout(context: Context?) : LinearLayout(context) {
             v?.addView(p)
 
             if (v != null) {
-                if (fullScreenPlayerId != null && p.roomId != null) {
+                if (fullScreenPlayerId != null && p.roomId != null) { // 判断是否双击全屏触发的
                     p.roomId = p.roomId
-                }else{
+                }else if (p.roomId == null) {
                     p.roomId = context?.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)?.getString("roomId${i-1}", null)
                 }
 
                 post {
                     p.adjustControlBar()
                 }
-//                p.adjustControlBar()
+
                 layoutPlayerCount += 1
             }else{
                 p.roomId = null
             }
         }
 
-
-//        val v1 = findViewById<LinearLayout>(R.id.dd_layout_1)
-//        val v2 = findViewById<LinearLayout>(R.id.dd_layout_2)
-//
-//        v1?.setOnDragListener { view, dragEvent ->
-//            if (dragEvent.action == DragEvent.ACTION_DROP) {
-//                Log.d("drop", "v1 " + dragEvent.clipData.getItemAt(0))
-//            }
-//            return@setOnDragListener true
-//        }
-//
-//
-//        v2?.setOnDragListener { view, dragEvent ->
-//            if (dragEvent.action == DragEvent.ACTION_DROP) {
-//                Log.d("drop", "v2 " + dragEvent.clipData.getItemAt(0))
-//            }
-//            return@setOnDragListener true
-//        }
     }
 }

@@ -39,18 +39,22 @@
 <!--                android:enabled="false"-->
 <!--                android:theme="@style/MyCheckBox"-->
 <!--                />-->
-            <TextView
+            <FrameLayout
                 android:layout_width="20dp"
                 android:layout_height="20dp"
                 android:id="@+id/up_checkbox"
                 android:visibility="gone"
-                android:text="√"
-                android:gravity="center"
-                android:textColor="#000"
-                android:background="@drawable/round"
+                android:background="@drawable/round_teal"
                 android:layout_marginStart="4dp"
                 android:layout_marginTop="4dp"
-                />
+                >
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@drawable/exo_ic_check"
+                    />
+            </FrameLayout>
+
         </FrameLayout>
 
         <LinearLayout
