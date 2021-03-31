@@ -329,7 +329,8 @@ class MainActivity : AppCompatActivity() {
         val refreshBtn = findViewById<Button>(R.id.refresh_btn)
         refreshBtn.typeface = typeface
         refreshBtn.setOnClickListener {
-            ddLayout.reloadLayout()
+//            ddLayout.reloadLayout()
+            ddLayout.refreshAll()
         }
 
         // 全局静音按钮
@@ -723,6 +724,7 @@ class MainActivity : AppCompatActivity() {
 
                                                 upInfo.isLive = data.getInt("live_status") == 1
                                                 if (upInfo.isLive && upinfos.containsKey(realRoomId) && upinfos[realRoomId]?.isLive == false) {
+                                                    Log.d("kaibo", upInfo.uname?:"")
                                                     reportLiveStartingList.add(upInfo.uname ?: "??")
                                                 }
 
@@ -754,7 +756,7 @@ class MainActivity : AppCompatActivity() {
                                         runOnUiThread {
                                             uplistviewAdapter.notifyDataSetInvalidated()
                                             if (reportLiveStarting && reportLiveStartingList.count() > 0) {
-                                                Toast.makeText(this@MainActivity, "${reportLiveStartingList.joinToString(", ")} 开播了", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(this@MainActivity, "${reportLiveStartingList.joinToString(", ")} 开播了", Toast.LENGTH_LONG).show()
                                             }
                                         }
                                     }catch (e: Exception) {

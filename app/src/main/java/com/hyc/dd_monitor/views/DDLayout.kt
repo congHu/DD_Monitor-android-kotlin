@@ -153,4 +153,13 @@ class DDLayout(context: Context?) : LinearLayout(context) {
         }
 
     }
+
+
+    // 刷新全部
+    fun refreshAll() {
+        for (i in 0 until layoutPlayerCount) {
+            val p = players[i]
+            p.roomId = p.roomId
+        }
+    }
 }

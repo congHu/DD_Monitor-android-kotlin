@@ -51,18 +51,13 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         set(value) {
             if (field != value) {
                 field = value
-                if (value == 10000) {
-                    qnBtn.text = "原画"
-                }else if (value == 400) {
-                    qnBtn.text = "蓝光"
-                }else if (value == 250) {
-                    qnBtn.text = "超清"
-                }else if (value == 150) {
-                    qnBtn.text = "高清"
-                }else if (value == 80) {
-                    qnBtn.text = "流畅"
-                }else{
-                    qnBtn.text = "画质"
+                qnBtn.text = "画质"
+                when (value) {
+                    10000 -> qnBtn.text = "原画"
+                    400 -> qnBtn.text = "蓝光"
+                    250 -> qnBtn.text = "超清"
+                    150 -> qnBtn.text = "高清"
+                    80 -> qnBtn.text = "流畅"
                 }
                 roomId = roomId
                 playerOptions.qn = value
@@ -160,6 +155,19 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
         }
         danmuListView.adapter = danmuListViewAdapter
+        danmuListView.setOnItemClickListener { adapterView, view, i, l ->
+            val danmu = danmuList[i]
+            val pop = PopupMenu(context, view)
+            pop.menuInflater.inflate(R.menu.danmu_clear, pop.menu)
+            pop.setOnMenuItemClickListener {
+                if (it.itemId == R.id.danmu_clear) {
+                    danmuList.remove(danmu)
+                    danmuListViewAdapter.notifyDataSetInvalidated()
+                }
+                return@setOnMenuItemClickListener true
+            }
+            pop.show()
+        }
 
         interpreterViewAdapter = object : BaseAdapter() {
             override fun getCount(): Int {
@@ -207,6 +215,19 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
 
         interpreterListView.adapter = interpreterViewAdapter
+        interpreterListView.setOnItemClickListener { adapterView, view, i, l ->
+            val danmu = interpreterList[i]
+            val pop = PopupMenu(context, view)
+            pop.menuInflater.inflate(R.menu.danmu_clear, pop.menu)
+            pop.setOnMenuItemClickListener {
+                if (it.itemId == R.id.danmu_clear) {
+                    interpreterList.remove(danmu)
+                    interpreterViewAdapter.notifyDataSetInvalidated()
+                }
+                return@setOnMenuItemClickListener true
+            }
+            pop.show()
+        }
 
         shadowView = findViewById(R.id.shadow_view)
         shadowFaceImg = findViewById(R.id.shadow_imageview)
@@ -423,7 +444,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     }
 
     fun showQnMenu() {
-        val pop = PopupMenu(context, playerNameBtn)
+        val pop = PopupMenu(context, qnBtn)
         pop.menuInflater.inflate(R.menu.qn_menu, pop.menu)
         pop.setOnMenuItemClickListener {
             var newQn = 80
@@ -667,9 +688,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                         Charsets.UTF_8
                                 )
                                 val jobj = JSONObject(jstr)
-                                if (jobj.getString("cmd") == "DANMU_MSG") {
-                                    val danmu =
-                                            jobj.getJSONArray("info").getString(1)
+                                val cmd = jobj.getString("cmd")
+                                if (cmd == "DANMU_MSG") {
+                                    val danmu = jobj.getJSONArray("info").getString(1)
                                     Log.d("danmu", "$value $danmu")
                                     handler.post {
                                         // 弹幕目前最多显示20条，是否要搞一个设置项？
@@ -681,9 +702,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                         danmuListView.setSelection(danmuListView.bottom)
 
                                         // 过滤同传弹幕
-                                        if (danmu.startsWith("【")
-                                                || danmu.startsWith("[")
-                                                || danmu.startsWith("{[}")
+                                        if (danmu.contains("【")
+                                                || danmu.contains("[")
+                                                || danmu.contains("{")
                                         ) {
                                             if (interpreterList.count() > 20) {
                                                 interpreterList.removeFirst()
@@ -693,6 +714,25 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                             interpreterListView.setSelection(interpreterListView.bottom)
                                         }
                                     }
+                                }else if (cmd == "SUPER_CHAT_MESSAGE") {
+                                    Log.d("SC", jobj.toString())
+                                    val danmu = jobj.getJSONObject("data").getString("message")
+                                    handler.post {
+                                        if (danmuList.count() > 20) {
+                                            danmuList.removeFirst()
+                                        }
+                                        danmuList.add("[SC] $danmu")
+                                        danmuListViewAdapter.notifyDataSetInvalidated()
+                                        danmuListView.setSelection(danmuListView.bottom)
+
+                                        if (interpreterList.count() > 20) {
+                                            interpreterList.removeFirst()
+                                        }
+                                        interpreterList.add("[SC] $danmu")
+                                        interpreterViewAdapter.notifyDataSetInvalidated()
+                                        interpreterListView.setSelection(interpreterListView.bottom)
+                                    }
+
                                 }
 
                                 len += nextLen
@@ -711,7 +751,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                         response: Response?
                 ) {
                     super.onFailure(webSocket, t, response)
-                    Log.d("danmu", "fail ${t.message}")
+                    Log.d("danmu", "$roomId fail ${t.message}")
                     t.printStackTrace()
                 }
 
