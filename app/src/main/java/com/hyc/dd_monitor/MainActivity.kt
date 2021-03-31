@@ -15,14 +15,14 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
+import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.gson.Gson
+import com.google.zxing.integration.android.IntentIntegrator
+import com.google.zxing.integration.android.IntentResult
 import com.hyc.dd_monitor.models.UPInfo
 import com.hyc.dd_monitor.utils.RoundImageTransform
-import com.hyc.dd_monitor.views.DDLayout
-import com.hyc.dd_monitor.views.DanmuOptionsDialog
-import com.hyc.dd_monitor.views.LayoutOptionsDialog
-import com.hyc.dd_monitor.views.UidImportDialog
+import com.hyc.dd_monitor.views.*
 import com.squareup.picasso.Picasso
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -87,50 +87,9 @@ class MainActivity : AppCompatActivity() {
                         }
                         Log.d("clipboard", clipboard)
                         lastClipboard = clipboard
-                        try {
-                            // 检查剪贴板是url格式，而且是b站直播链接
-                            val url = URL(clipboard)
-                            if (url.host == "live.bilibili.com") {
-                                Log.d("clipboard", url.path)
-                                // 是否需要正则匹配数字？
-                                val urlId = url.path.replace("/", "")
-                                urlId.toIntOrNull()?.let { roomId ->
-                                    AlertDialog.Builder(this)
-                                        .setTitle("添加id $roomId ?")
-                                        .setPositiveButton("是") { _, _ ->
-                                            if (uplist.contains(roomId.toString())) {
-                                                Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show()
-                                                return@setPositiveButton
-                                            }
-                                            loadUpInfo(roomId.toString()) { realRoomId ->
-                                                runOnUiThread {
-                                                    if (uplist.contains(realRoomId)) {
-                                                        Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show()
-                                                        return@runOnUiThread
-                                                    }
-
-                                                    uplist.add(0, realRoomId)
-                                                    getSharedPreferences("sp", MODE_PRIVATE).edit {
-                                                        this.putString("uplist", uplist.joinToString(" ")).apply()
-                                                    }
-//                                                    uplistview.invalidateViews()
-                                                    uplistviewAdapter.notifyDataSetInvalidated()
-                                                    drawer.openDrawer(drawerContent)
-//                                                    for (up in uplist) {
-//                                                        loadUpInfo(up)
-//                                                    }
-                                                    loadManyUpInfos()
-                                                }
-                                            }
-                                        }
-                                        .setNegativeButton("否", null)
-                                        .show()
-
-                                    // 删除剪贴板避免重复提醒
-                                    it.setPrimaryClip(ClipData.newPlainText("",""))
-                                }
-                            }
-                        }catch (_:Exception) {}
+                        addFromUrl(clipboard)
+                        // 删除剪贴板避免重复提醒
+                        it.setPrimaryClip(ClipData.newPlainText("",""))
                     }
                 }
             }
@@ -545,6 +504,10 @@ class MainActivity : AppCompatActivity() {
             dialog.show()
         }
 
+        findViewById<Button>(R.id.scan_qr_btn).setOnClickListener {
+            startActivityForResult(Intent(this, ScanQrActivity::class.java), 123)
+        }
+
         // 定时刷新 开播提醒
         val timer = Timer()
         timer.schedule(object : TimerTask() {
@@ -597,6 +560,64 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 123) {
+            try {
+                val res = IntentIntegrator.parseActivityResult(resultCode, data).contents
+                Log.d("scanqr", res)
+                addFromUrl(res)
+            }catch (e: Exception){}
+
+        }
+    }
+
+    fun addFromUrl(urlStr: String) {
+        try {
+            // 检查剪贴板是url格式，而且是b站直播链接
+            val url = URL(urlStr)
+            if (url.host == "live.bilibili.com") {
+                Log.d("clipboard", url.path)
+                // 是否需要正则匹配数字？
+                val urlId = url.path.replace("/", "")
+                urlId.toIntOrNull()?.let { roomId ->
+                    AlertDialog.Builder(this)
+                        .setTitle("添加id $roomId ?")
+                        .setPositiveButton("是") { _, _ ->
+                            if (uplist.contains(roomId.toString())) {
+                                Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show()
+                                return@setPositiveButton
+                            }
+                            loadUpInfo(roomId.toString()) { realRoomId ->
+                                runOnUiThread {
+                                    if (uplist.contains(realRoomId)) {
+                                        Toast.makeText(this, "已存在", Toast.LENGTH_SHORT).show()
+                                        return@runOnUiThread
+                                    }
+
+                                    uplist.add(0, realRoomId)
+                                    getSharedPreferences("sp", MODE_PRIVATE).edit {
+                                        this.putString("uplist", uplist.joinToString(" ")).apply()
+                                    }
+//                                                    uplistview.invalidateViews()
+                                    uplistviewAdapter.notifyDataSetInvalidated()
+                                    drawer.openDrawer(drawerContent)
+//                                                    for (up in uplist) {
+//                                                        loadUpInfo(up)
+//                                                    }
+                                    loadManyUpInfos()
+                                }
+                            }
+                        }
+                        .setNegativeButton("否", null)
+                        .show()
+
+
+                }
+            }
+        }catch (_:Exception) {}
     }
 
     // 读取单个直播间信息 不可并发、不可频繁请求
@@ -828,7 +849,10 @@ class MainActivity : AppCompatActivity() {
     var backPressTime: Long = 0
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (System.currentTimeMillis() - backPressTime > 2000) {
+            if (drawer.isDrawerOpen(GravityCompat.END)) {
+                drawer.closeDrawers()
+                return true
+            }else if (System.currentTimeMillis() - backPressTime > 2000) {
                 Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show()
                 backPressTime = System.currentTimeMillis()
                 return true

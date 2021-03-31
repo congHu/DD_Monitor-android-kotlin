@@ -164,7 +164,7 @@
                 android:text="列表"
                 />
             <Button
-                android:layout_width="60dp"
+                android:layout_width="40dp"
                 android:layout_height="32dp"
                 android:text="添加"
                 android:id="@+id/add_up_btn"
@@ -174,10 +174,21 @@
                 android:textColor="#fff"
                 />
             <Button
-                android:layout_width="60dp"
+                android:layout_width="40dp"
                 android:layout_height="32dp"
                 android:text="导入"
                 android:id="@+id/uid_import_btn"
+                android:background="@drawable/default_btn_night"
+                android:minHeight="0dp"
+                android:minWidth="0dp"
+                android:textColor="#fff"
+                android:layout_marginLeft="2dp"
+                />
+            <Button
+                android:layout_width="40dp"
+                android:layout_height="32dp"
+                android:text="扫码"
+                android:id="@+id/scan_qr_btn"
                 android:background="@drawable/default_btn_night"
                 android:minHeight="0dp"
                 android:minWidth="0dp"
