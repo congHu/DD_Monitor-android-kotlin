@@ -20,6 +20,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import java.util.regex.Pattern
 
 class UidImportDialog(context: Context) : Dialog(context) {
 
@@ -117,9 +118,9 @@ class UidImportDialog(context: Context) : Dialog(context) {
         val uidText = findViewById<EditText>(R.id.uid_edittext)
 
         findViewById<Button>(R.id.submit_btn).setOnClickListener {
-            val uid = uidText.text.toString().toIntOrNull()
+            val uid = uidText.text.toString()
 
-            if (uid != null) {
+            if (Pattern.compile("\\d+").matcher(uid).matches()) {
                 Log.d("uid", uid.toString())
                 mids.removeAll(mids)
                 result.removeAll(result)
@@ -179,11 +180,12 @@ class UidImportDialog(context: Context) : Dialog(context) {
         }
     }
 
-    fun loadMids(uid: Int, pn: Int) {
+    fun loadMids(uid: String, pn: Int) {
         Log.d("uid", "loadmids")
         OkHttpClient().newCall(
             Request.Builder()
                 .url("https://api.bilibili.com/x/relation/followings?vmid=$uid&pn=$pn&ps=50&order=desc&jsonp=jsonp")
+//                .addHeader("Connection", "close")
                 .build()
         ).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -223,6 +225,7 @@ class UidImportDialog(context: Context) : Dialog(context) {
             Request.Builder()
                 .url("https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids")
                 .method("POST", body)
+//                .addHeader("Connection", "close")
                 .build()
         ).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {

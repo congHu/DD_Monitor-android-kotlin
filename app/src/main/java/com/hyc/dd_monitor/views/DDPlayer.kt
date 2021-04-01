@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.DragEvent
 import android.view.View
@@ -518,6 +520,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             OkHttpClient().newCall(
                 Request.Builder()
                     .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$value")
+//                    .addHeader("Connection", "close")
                     .build()
             ).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
@@ -526,8 +529,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
                 override fun onResponse(call: Call, response: Response) {
                     response.body?.let {
-                        val jo = JSONObject(it.string())
-                        jo.optJSONObject("data")?.let { data ->
+                        try {
+                            val jo = JSONObject(it.string())
+                            val data = jo.getJSONObject("data")
                             val roomInfo = data.getJSONObject("room_info")
                             val anchorInfo =
                                 data.getJSONObject("anchor_info").getJSONObject("base_info")
@@ -548,6 +552,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 }
 
                             }
+                        }catch (e: Exception) {
 
                         }
 
@@ -559,8 +564,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             // 加载视频流信息
             OkHttpClient().newCall(
                     Request.Builder()
-                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
-                            .build()
+                        .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
+//                        .addHeader("Connection", "close")
+                        .build()
             ).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
 
@@ -568,22 +574,24 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
                 override fun onResponse(call: Call, response: Response) {
                     response.body?.let { it2 ->
-                        val jo1 = JSONObject(it2.string())
-                        jo1.optJSONObject("data")?.let { data1 ->
-                            val url = data1.getJSONArray("durl").getJSONObject(0)
-                                    .getString(
-                                            "url"
-                                    )
-                            handler.post {
-                                player = SimpleExoPlayer.Builder(context).build()
-                                playerView.player = player
-                                player!!.setMediaItem(MediaItem.fromUri(url))
-                                player!!.volume =
-                                        if (isGlobalMuted) 0f else volumeSlider.progress.toFloat() / 100f
-                                player!!.playWhenReady = true
-                                player!!.prepare()
-                            }
+                        var url = ""
+                        try {
+                            url = JSONObject(it2.string())
+                                .getJSONObject("data")
+                                .getJSONArray("durl")
+                                .getJSONObject(0)
+                                .getString("url")
+                        }catch (e: Exception) {
 
+                        }
+                        handler.post {
+                            player = SimpleExoPlayer.Builder(context).build()
+                            playerView.player = player
+                            player!!.setMediaItem(MediaItem.fromUri(url))
+                            player!!.volume =
+                                if (isGlobalMuted) 0f else volumeSlider.progress.toFloat() / 100f
+                            player!!.playWhenReady = true
+                            player!!.prepare()
                         }
 
                     }
@@ -840,8 +848,11 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         hideControlTimer!!.schedule(object : TimerTask() {
             override fun run() {
                 if (!volumeAdjusting) {
-                    controlBar.visibility = INVISIBLE
-                    volumeBar.visibility = INVISIBLE
+                    Handler(Looper.getMainLooper()).post {
+                        controlBar.visibility = INVISIBLE
+                        volumeBar.visibility = INVISIBLE
+                    }
+
                 }
 
                 hideControlTimer = null

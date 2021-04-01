@@ -31,6 +31,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.URL
 import java.util.*
+import java.util.regex.Pattern
 import kotlin.collections.HashMap
 
 class MainActivity : AppCompatActivity() {
@@ -529,18 +530,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun addRoomId(id: String, promt: Boolean = false) {
-        val roomId = id.toIntOrNull()
-        if (roomId == null) {
+//        val roomId = id.toIntOrNull()
+        if (!Pattern.compile("\\d+").matcher(id).matches()) {
             Toast.makeText(this, "无效的id $id", Toast.LENGTH_SHORT).show()
             return
         }
 
-        if (uplist.contains(roomId.toString())) {
+        if (uplist.contains(id)) {
             Toast.makeText(this, "已存在 $id", Toast.LENGTH_SHORT).show()
             return
         }
 
-        loadUpInfo(roomId.toString()) { realRoomId ->
+        loadUpInfo(id) { realRoomId ->
             if (uplist.contains(realRoomId)) {
                 runOnUiThread {
                     Toast.makeText(this, "已存在 $id", Toast.LENGTH_SHORT).show()
@@ -623,7 +624,9 @@ class MainActivity : AppCompatActivity() {
     // 读取单个直播间信息 不可并发、不可频繁请求
     fun loadUpInfo(roomId: String, finished: ((realRoomId: String) -> Unit)? = null) {
         OkHttpClient().newCall(Request.Builder()
-            .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$roomId").build()
+            .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$roomId")
+//            .addHeader("Connection", "close")
+            .build()
         ).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
 
@@ -632,9 +635,9 @@ class MainActivity : AppCompatActivity() {
             override fun onResponse(call: Call, response: Response) {
                 Log.d("loadinfo", roomId)
                 response.body?.let {
-                    val jo = JSONObject(it.string())
-                    jo.optJSONObject("data")?.let { data ->
-
+                    try {
+                        val jo = JSONObject(it.string())
+                        val data = jo.getJSONObject("data")
                         val roomInfo = data.getJSONObject("room_info")
                         val anchorInfo = data.getJSONObject("anchor_info").getJSONObject("base_info")
 
@@ -667,16 +670,15 @@ class MainActivity : AppCompatActivity() {
 
 
                         runOnUiThread {
-//                            uplistview.invalidateViews()
                             uplistviewAdapter.notifyDataSetInvalidated()
                         }
-
-                        return
+                    }catch (e: Exception) {
+                        runOnUiThread {
+                            Toast.makeText(this@MainActivity, "查询id失败 $roomId", Toast.LENGTH_SHORT).show()
+                        }
                     }
 
-                    runOnUiThread {
-                        Toast.makeText(this@MainActivity, "查询id失败 $roomId", Toast.LENGTH_SHORT).show()
-                    }
+
                 }
             }
 
@@ -690,9 +692,10 @@ class MainActivity : AppCompatActivity() {
         val body = postdata.toRequestBody("application/json; charset=utf-8".toMediaType())
         OkHttpClient().newCall(
                 Request.Builder()
-                        .url("https://api.live.bilibili.com/room/v2/Room/get_by_ids")
-                        .method("POST", body)
-                        .build()
+                    .url("https://api.live.bilibili.com/room/v2/Room/get_by_ids")
+                    .method("POST", body)
+//                    .addHeader("Connection", "close")
+                    .build()
         ).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
 
@@ -717,9 +720,10 @@ class MainActivity : AppCompatActivity() {
                         val body1 = Gson().toJson(mapOf(Pair("uids", uids))).toRequestBody("application/json; charset=utf-8".toMediaType())
                         OkHttpClient().newCall(
                                 Request.Builder()
-                                        .url("https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids")
-                                        .method("POST", body1)
-                                        .build()
+                                    .url("https://api.live.bilibili.com/room/v1/Room/get_status_info_by_uids")
+                                    .method("POST", body1)
+//                                    .addHeader("Connection", "close")
+                                    .build()
                         ).enqueue(object : Callback {
                             override fun onFailure(call: Call, e: IOException) {
 
