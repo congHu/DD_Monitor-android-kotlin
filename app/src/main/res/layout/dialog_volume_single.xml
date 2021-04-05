@@ -13,6 +13,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
+        android:padding="8dp"
         >
         <Button
             android:layout_width="30dp"
@@ -24,11 +25,19 @@
             android:id="@+id/mute_btn"
             />
         <SeekBar
-            android:layout_width="200dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:minWidth="200dp"
             android:id="@+id/dialog_volume_slider"
             android:progress="100"
             android:layout_gravity="center"
+            />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/dialog_volume_textview"
+            android:text="100"
             />
     </LinearLayout>
 </LinearLayout>

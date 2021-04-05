@@ -207,8 +207,12 @@ class UidImportDialog(context: Context) : Dialog(context) {
                             loadRoomInfo()
                         }
                     }catch (e: Exception) {
-                        handler.post {
-                            Toast.makeText(context, "查询uid失败", Toast.LENGTH_SHORT).show()
+                        if (mids.count() == 0) {
+                            handler.post {
+                                Toast.makeText(context, "查询uid失败", Toast.LENGTH_SHORT).show()
+                            }
+                        }else{
+                            loadRoomInfo()
                         }
                     }
 

@@ -313,6 +313,7 @@ class MainActivity : AppCompatActivity() {
             dialog.onDanmuOptionsChangeListener = {
                 // 修改全部的弹幕设置
                 for (p in ddLayout.players) {
+                    it.volume = p.playerOptions.volume
                     p.playerOptions = it
                     p.notifyPlayerOptionsChange()
                 }

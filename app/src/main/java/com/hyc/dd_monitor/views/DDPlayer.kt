@@ -83,9 +83,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var onDragAndDropListener: ((drag: Int, drop: Int) -> Unit)? = null
     var onCardDropListener: (() -> Unit)? = null
 
-    var volumeBar: LinearLayout
-    var volumeSlider: SeekBar
-    var volumeAdjusting = false
+//    var volumeBar: LinearLayout
+//    var volumeSlider: SeekBar
+//    var volumeAdjusting = false
 
     var refreshBtn: Button
     var volumeBtn: Button
@@ -95,7 +95,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var isGlobalMuted = false
         set(value) {
             field = value
-            player?.volume = if (value) 0f else volumeSlider.progress.toFloat()/100f
+            player?.volume = if (value) 0f else playerOptions.volume
         }
 
     var qnBtn: Button
@@ -127,8 +127,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         danmuView = findViewById(R.id.danmu_view)
         danmuListView = findViewById(R.id.danmu_listView)
         interpreterListView = findViewById(R.id.interpreter_listView)
-        volumeBar = findViewById(R.id.volume_bar)
-        volumeSlider = findViewById(R.id.volume_slider)
+//        volumeBar = findViewById(R.id.volume_bar)
+//        volumeSlider = findViewById(R.id.volume_slider)
         qnBtn = findViewById(R.id.qn_btn)
 
 
@@ -202,16 +202,16 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             }
 
             override fun onStartTrackingTouch(p0: SeekBar?) {
-                volumeAdjusting = true
+//                volumeAdjusting = true
             }
 
             override fun onStopTrackingTouch(p0: SeekBar?) {
-                volumeAdjusting = false
-                showControlBar()
-                if (p0 != null && p0 != volumeSlider) {
-                    volumeSlider.progress = p0.progress
-                }
-                playerOptions.volume = volumeSlider.progress.toFloat()/100f
+//                volumeAdjusting = false
+//                showControlBar()
+//                if (p0 != null && p0 != volumeSlider) {
+//                    volumeSlider.progress = p0.progress
+//                }
+                playerOptions.volume = p0!!.progress.toFloat()/100f
                 notifyPlayerOptionsChange()
             }
         }
@@ -272,15 +272,21 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     this.roomId = roomId
                 }
                 if (it.itemId == R.id.volume_btn) {
-                    if (height < context.resources.displayMetrics.density * 130) {
-                        val dialog = VolumeControlDialog(context)
-                        dialog.title = "音量调节: ${playerNameBtn.text}"
-                        dialog.onSeekBarListener = volumeChangedListener
-                        dialog.volume = volumeSlider.progress
-                        dialog.show()
-                    }else{
-                        volumeBar.visibility = VISIBLE
-                    }
+                    // 统一使用弹出式音量调节
+                    val dialog = VolumeControlDialog(context)
+                    dialog.title = "音量调节: ${playerNameBtn.text}"
+                    dialog.onSeekBarListener = volumeChangedListener
+                    dialog.volume = (playerOptions.volume * 100f).toInt()
+                    dialog.show()
+//                    if (height < context.resources.displayMetrics.density * 130) {
+//                        val dialog = VolumeControlDialog(context)
+//                        dialog.title = "音量调节: ${playerNameBtn.text}"
+//                        dialog.onSeekBarListener = volumeChangedListener
+//                        dialog.volume = volumeSlider.progress
+//                        dialog.show()
+//                    }else{
+//                        volumeBar.visibility = VISIBLE
+//                    }
                 }
                 if (it.itemId == R.id.danmu_btn) {
                     showDanmuDialog()
@@ -353,7 +359,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             }else{
                 showControlBar()
             }
-            volumeBar.visibility = INVISIBLE
+//            volumeBar.visibility = INVISIBLE
 
             // 双击全屏
             if (System.currentTimeMillis() - doubleClickTime < 300) {
@@ -378,21 +384,28 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         volumeBtn = findViewById<Button>(R.id.volume_btn)
         volumeBtn.typeface = typeface
         volumeBtn.setOnClickListener {
-            showControlBar()
+//            showControlBar()
 
-            if (height < context.resources.displayMetrics.density * 130) {
-                val dialog = VolumeControlDialog(context)
-                dialog.title = "音量调节: ${playerNameBtn.text}"
-                dialog.onSeekBarListener = volumeChangedListener
-                dialog.volume = volumeSlider.progress
-                dialog.show()
-            }else{
-                if (volumeBar.visibility == VISIBLE) {
-                    volumeBar.visibility = INVISIBLE
-                }else{
-                    volumeBar.visibility = VISIBLE
-                }
-            }
+            // 统一使用弹出式音量调节
+            val dialog = VolumeControlDialog(context)
+            dialog.title = "音量调节: ${playerNameBtn.text}"
+            dialog.onSeekBarListener = volumeChangedListener
+            dialog.volume = (playerOptions.volume * 100f).toInt()
+            dialog.show()
+
+//            if (height < context.resources.displayMetrics.density * 130) {
+//                val dialog = VolumeControlDialog(context)
+//                dialog.title = "音量调节: ${playerNameBtn.text}"
+//                dialog.onSeekBarListener = volumeChangedListener
+//                dialog.volume = volumeSlider.progress
+//                dialog.show()
+//            }else{
+//                if (volumeBar.visibility == VISIBLE) {
+//                    volumeBar.visibility = INVISIBLE
+//                }else{
+//                    volumeBar.visibility = VISIBLE
+//                }
+//            }
 
 
         }
@@ -406,24 +419,31 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 //        volumeSlider.addOnChangeListener { slider, value, fromUser ->
 //            player?.volume = if (isGlobalMuted) 0f else value/100f
 //        }
-        volumeSlider.setOnSeekBarChangeListener(volumeChangedListener)
+//        volumeSlider.setOnSeekBarChangeListener(volumeChangedListener)
 
         // 静音按钮
-        val muteBtn = findViewById<Button>(R.id.mute_btn)
-        muteBtn.typeface = typeface
-        muteBtn.setOnClickListener {
-            if (volumeSlider.progress == 0) {
-                volumeSlider.progress = 50
-                player?.volume = if (isGlobalMuted) 0f else .5f
-                playerOptions.volume = .5f
-            }else{
-                volumeSlider.progress = 0
-                player?.volume = 0f
-                playerOptions.volume = 0f
-            }
-            notifyPlayerOptionsChange()
-
-        }
+//        val muteBtn = findViewById<Button>(R.id.mute_btn)
+//        muteBtn.typeface = typeface
+//        muteBtn.setOnClickListener {
+//            if (playerOptions.volume == 0f) {
+//                player?.volume = if (isGlobalMuted) 0f else .5f
+//                playerOptions.volume = .5f
+//            }else{
+//                player?.volume = 0f
+//                playerOptions.volume = 0f
+//            }
+//            if (volumeSlider.progress == 0) {
+//                volumeSlider.progress = 50
+//                player?.volume = if (isGlobalMuted) 0f else .5f
+//                playerOptions.volume = .5f
+//            }else{
+//                volumeSlider.progress = 0
+//                player?.volume = 0f
+//                playerOptions.volume = 0f
+//            }
+//            notifyPlayerOptionsChange()
+//
+//        }
 
         // 画质按钮
         qnBtn.setOnClickListener {
@@ -589,7 +609,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                             playerView.player = player
                             player!!.setMediaItem(MediaItem.fromUri(url))
                             player!!.volume =
-                                if (isGlobalMuted) 0f else volumeSlider.progress.toFloat() / 100f
+                                if (isGlobalMuted) 0f else playerOptions.volume
                             player!!.playWhenReady = true
                             player!!.prepare()
                         }
@@ -805,7 +825,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
     // 每当修改了播放器设置，做出相应的界面改变，然后保存设置
     fun notifyPlayerOptionsChange() {
-        volumeSlider.progress = (playerOptions.volume * 100f).roundToInt()
+//        volumeSlider.progress = (playerOptions.volume * 100f).roundToInt()
         player?.volume = if (isGlobalMuted) 0f else playerOptions.volume
 
         danmuView.visibility = if (playerOptions.isDanmuShow) VISIBLE else GONE
@@ -847,14 +867,16 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         hideControlTimer = Timer()
         hideControlTimer!!.schedule(object : TimerTask() {
             override fun run() {
-                if (!volumeAdjusting) {
-                    Handler(Looper.getMainLooper()).post {
-                        controlBar.visibility = INVISIBLE
-                        volumeBar.visibility = INVISIBLE
-                    }
-
+//                if (!volumeAdjusting) {
+//                    Handler(Looper.getMainLooper()).post {
+//                        controlBar.visibility = INVISIBLE
+//                        volumeBar.visibility = INVISIBLE
+//                    }
+//
+//                }
+                Handler(Looper.getMainLooper()).post {
+                    controlBar.visibility = INVISIBLE
                 }
-
                 hideControlTimer = null
             }
         }, 5000)
