@@ -19,7 +19,6 @@ import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.gson.Gson
 import com.google.zxing.integration.android.IntentIntegrator
-import com.google.zxing.integration.android.IntentResult
 import com.hyc.dd_monitor.models.UPInfo
 import com.hyc.dd_monitor.utils.RoundImageTransform
 import com.hyc.dd_monitor.views.*
@@ -781,9 +780,18 @@ class MainActivity : AppCompatActivity() {
                                         }
                                         runOnUiThread {
                                             uplistviewAdapter.notifyDataSetInvalidated()
-                                            if (reportLiveStarting && reportLiveStartingList.count() > 0) {
-                                                Toast.makeText(this@MainActivity, "${reportLiveStartingList.joinToString(", ")} 开播了", Toast.LENGTH_LONG).show()
+                                            if (reportLiveStartingList.count() > 0) {
+                                                if (reportLiveStarting) {
+                                                    Toast.makeText(this@MainActivity, "${reportLiveStartingList.joinToString(", ")} 开播了", Toast.LENGTH_LONG).show()
+                                                }
+                                                for (i in 0 until ddLayout.layoutPlayerCount) {
+                                                    val p = ddLayout.players[i]
+                                                    if (p.roomId != null && reportLiveStartingList.contains(p.roomId)) {
+                                                        p.roomId = p.roomId
+                                                    }
+                                                }
                                             }
+
                                         }
                                     }catch (e: Exception) {
                                     }

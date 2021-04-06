@@ -20,7 +20,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
     private static final String TAG = "CrashHandler";
     private static final boolean DEBUG = true;
 
-    private static final String PATH = Environment.getExternalStorageDirectory().getPath() + "/DDPlayerLog/";
+    private static final String PATH = Environment.getExternalStorageDirectory().getPath() + "/DDPlayer/Logs/";
 
     private static final String FILE_NAME = "crash";
     private static final String FILE_NAME_SUFFIX = ".txt";

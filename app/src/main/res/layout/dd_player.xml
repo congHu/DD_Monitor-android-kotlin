@@ -66,6 +66,49 @@
             />
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginTop="8dp"
+        app:layout_constraintHorizontal_bias="1"
+        android:padding="4dp"
+        android:orientation="horizontal"
+        android:background="#80000000"
+        android:id="@+id/recording_view"
+        android:visibility="gone"
+        android:clickable="true"
+        >
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="●"
+            android:textColor="#f00"
+            android:textSize="9sp"
+            />
+<!--        <TextView-->
+<!--            android:layout_width="wrap_content"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:text="0:00"-->
+<!--            android:textColor="#fff"-->
+<!--            android:layout_marginStart="2dp"-->
+<!--            android:id="@+id/recording_duration_textview"-->
+<!--            android:textSize="9sp"-->
+<!--            />-->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0B"
+            android:textColor="#fff"
+            android:layout_marginStart="2dp"
+            android:id="@+id/recording_size_textview"
+            android:textSize="9sp"
+            />
+    </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
