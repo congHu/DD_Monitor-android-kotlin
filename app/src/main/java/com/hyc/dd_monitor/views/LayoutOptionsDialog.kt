@@ -24,7 +24,7 @@ class LayoutOptionsDialog(context: Context) : Dialog(context) {
 
         gv.adapter = object : BaseAdapter() {
             override fun getCount(): Int {
-                return 19
+                return 27
             }
 
             override fun getItem(p0: Int): Any {
