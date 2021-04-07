@@ -272,7 +272,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             pop.menuInflater.inflate(menuId, pop.menu)
             if (player != null && player?.isPlaying == true) {
                 if (recordingTimer == null) {
-                    pop.menu.add(0, 666, 0, "开始录制")
+                    pop.menu.add(0, 666, 0, "开始录制(beta)")
                 }else{
                     pop.menu.add(0, 999, 0, "结束录制")
                 }

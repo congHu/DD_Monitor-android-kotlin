@@ -17,6 +17,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.edit
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.google.zxing.integration.android.IntentIntegrator
 import com.hyc.dd_monitor.models.UPInfo
@@ -782,7 +783,17 @@ class MainActivity : AppCompatActivity() {
                                             uplistviewAdapter.notifyDataSetInvalidated()
                                             if (reportLiveStartingList.count() > 0) {
                                                 if (reportLiveStarting) {
-                                                    Toast.makeText(this@MainActivity, "${reportLiveStartingList.joinToString(", ")} 开播了", Toast.LENGTH_LONG).show()
+                                                    // 开播提醒
+//                                                    Toast.makeText(
+//                                                            this@MainActivity,
+//                                                            "${reportLiveStartingList.joinToString(", ")} 开播了",
+//                                                            Toast.LENGTH_LONG
+//                                                    ).show()
+                                                    Snackbar.make(
+                                                            window.decorView,
+                                                            "${reportLiveStartingList.joinToString(", ")} 开播了",
+                                                            Snackbar.LENGTH_LONG
+                                                    ).setAction("关闭") {}.show()
                                                 }
                                                 for (i in 0 until ddLayout.layoutPlayerCount) {
                                                     val p = ddLayout.players[i]
