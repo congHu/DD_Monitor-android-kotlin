@@ -4,6 +4,7 @@ import android.app.Dialog
 import android.content.Context
 import android.graphics.Typeface
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
@@ -29,7 +30,7 @@ class GlobalVolumeDialog(context: Context, val ddLayout: DDLayout) : Dialog(cont
             }
 
             override fun getView(p0: Int, p1: View?, p2: ViewGroup?): View {
-                val view = p1 ?: View.inflate(context, R.layout.dialog_volume_single, null)
+                val view = View.inflate(context, R.layout.dialog_volume_single, null)
 
                 val p = ddLayout.players[p0]
                 view.findViewById<TextView>(R.id.dialog_title).text = p.playerNameBtn.text
