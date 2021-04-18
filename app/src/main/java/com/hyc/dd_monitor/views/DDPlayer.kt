@@ -123,6 +123,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 //    var recordingDuration: TextView
     var recordingSize: TextView
 
+    var volumeChangedListener: SeekBar.OnSeekBarChangeListener
+
     init {
         layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -222,7 +224,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
 
         // 音量调节
-        val volumeChangedListener = object : SeekBar.OnSeekBarChangeListener {
+        volumeChangedListener = object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, p1: Int, p2: Boolean) {
                 player?.volume = if (isGlobalMuted) 0f else p1.toFloat()/100f
             }

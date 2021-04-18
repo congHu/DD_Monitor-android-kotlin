@@ -297,12 +297,14 @@ class MainActivity : AppCompatActivity() {
         volumeBtn = findViewById<Button>(R.id.volume_btn)
         volumeBtn.typeface = typeface
         volumeBtn.setOnClickListener {
-            isGlobalMuted = !isGlobalMuted
-            // 修改全部的音量
-            for (p in ddLayout.players) {
-                p.isGlobalMuted = isGlobalMuted
-            }
-            volumeBtn.text = if (isGlobalMuted) "\ue607" else "\ue606"
+//            isGlobalMuted = !isGlobalMuted
+//            // 修改全部的音量
+//            for (p in ddLayout.players) {
+//                p.isGlobalMuted = isGlobalMuted
+//            }
+//            volumeBtn.text = if (isGlobalMuted) "\ue607" else "\ue606"
+            val dialog = GlobalVolumeDialog(this, ddLayout)
+            dialog.show()
         }
 
         // 全局弹幕按钮
