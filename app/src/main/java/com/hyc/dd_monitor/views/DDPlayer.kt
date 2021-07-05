@@ -89,6 +89,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var onDragAndDropListener: ((drag: Int, drop: Int) -> Unit)? = null
     var onCardDropListener: (() -> Unit)? = null
 
+    var onPlayerClickListener: (() -> Unit)? = null
+
 //    var volumeBar: LinearLayout
 //    var volumeSlider: SeekBar
 //    var volumeAdjusting = false
@@ -415,6 +417,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             }else{
                 doubleClickTime = System.currentTimeMillis()
             }
+
+            onPlayerClickListener?.invoke()
         }
 
         val typeface = Typeface.createFromAsset(context.assets, "iconfont.ttf")

@@ -19,6 +19,8 @@ class DDLayout(context: Context?) : LinearLayout(context) {
 
     var onCardDropListener: (() -> Unit)? = null
 
+    var onPlayerClickListener: (() -> Unit)? = null
+
     var layoutPlayerCount = 0
 
     var fullScreenPlayerId: Int? = null
@@ -100,6 +102,10 @@ class DDLayout(context: Context?) : LinearLayout(context) {
             }
             p.onCardDropListener = {
                 onCardDropListener?.invoke()
+            }
+            p.onPlayerClickListener = {
+                Log.d("ddclick", "ddclick")
+                onPlayerClickListener?.invoke()
             }
             this.players.add(p)
         }

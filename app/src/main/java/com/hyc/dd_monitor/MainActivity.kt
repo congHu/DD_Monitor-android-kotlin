@@ -50,6 +50,8 @@ class MainActivity : AppCompatActivity() {
     lateinit var drawer: DrawerLayout
     lateinit var drawerContent: LinearLayout
 
+    lateinit var toolbar: FrameLayout
+
     lateinit var volumeBtn: Button
 
     var isGlobalMuted = false
@@ -88,7 +90,8 @@ class MainActivity : AppCompatActivity() {
                         }
                         Log.d("clipboard", clipboard)
                         lastClipboard = clipboard
-                        addFromUrl(clipboard)
+//                        addFromUrl(clipboard)
+                        addFromShareClip(clipboard)
                         // 删除剪贴板避免重复提醒
                         it.setPrimaryClip(ClipData.newPlainText("",""))
                     }
@@ -112,12 +115,24 @@ class MainActivity : AppCompatActivity() {
         drawer = findViewById(R.id.main_drawer)
         drawerContent = findViewById(R.id.drawer_content)
 
+        toolbar = findViewById(R.id.top_toolbar)
+
         val dd = findViewById<LinearLayout>(R.id.stack_view)
         ddLayout = DDLayout(this)
 
         // 拖放成功后 取消拖拽按钮消失
         ddLayout.onCardDropListener = {
             cancelDragView.visibility = View.GONE
+        }
+
+        ddLayout.onPlayerClickListener = {
+            if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE) {
+                if (toolbar.visibility == View.GONE) {
+                    toolbar.visibility = View.VISIBLE
+                } else {
+                    toolbar.visibility = View.GONE
+                }
+            }
         }
 
         dd.addView(ddLayout)
@@ -411,10 +426,14 @@ class MainActivity : AppCompatActivity() {
         val landScapeBtn = findViewById<Button>(R.id.landscape_btn)
         landScapeBtn.typeface = typeface
         landScapeBtn.setOnClickListener {
-            requestedOrientation = if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE) {
-                ActivityInfo.SCREEN_ORIENTATION_USER
+            if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE) {
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER
+                window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                toolbar.visibility = View.VISIBLE
             }else{
-                ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+                toolbar.visibility = View.GONE
             }
         }
 
@@ -622,6 +641,77 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }catch (_:Exception) {}
+    }
+
+    fun addFromShareClip(clip: String) {
+        try {
+            """【.*】\s*(https?://\S+)""".toRegex().find(clip)?.groupValues?.get(1)?.let {
+                val url = URL(it)
+                if (listOf("b23.tv").contains(url.host)) {
+                    AlertDialog.Builder(this)
+                        .setTitle("添加 $clip ?")
+                        .setPositiveButton("是") { _, _ ->
+                            OkHttpClient().newCall(
+                                Request.Builder()
+                                    .url(it)
+                                    .header("User-Agent", "PythonRequests")
+                                    .header("Accept", "*/*")
+                                    .build()
+                            ).enqueue(object : Callback {
+                                override fun onFailure(call: Call, e: IOException) {
+                                    runOnUiThread {
+                                        Toast.makeText(this@MainActivity, "短链接解析失败", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+
+                                override fun onResponse(call: Call, response: Response) {
+                                    try {
+                                        val roomId = """"room_id":(\d+)""".toRegex()
+                                            .find(response.body!!.string())!!.groupValues[1]
+                                        if (uplist.contains(roomId)) {
+                                            runOnUiThread {
+                                                Toast.makeText(this@MainActivity, "${roomId}已存在", Toast.LENGTH_SHORT).show()
+                                            }
+                                            return
+                                        }
+                                        loadUpInfo(roomId) { realRoomId ->
+                                            runOnUiThread {
+                                                if (uplist.contains(realRoomId)) {
+                                                    Toast.makeText(this@MainActivity, "${realRoomId}已存在", Toast.LENGTH_SHORT).show()
+                                                    return@runOnUiThread
+                                                }
+
+                                                uplist.add(0, realRoomId)
+                                                getSharedPreferences("sp", MODE_PRIVATE).edit {
+                                                    this.putString("uplist", uplist.joinToString(" ")).apply()
+                                                }
+//                                                    uplistview.invalidateViews()
+                                                uplistviewAdapter.notifyDataSetInvalidated()
+                                                drawer.openDrawer(drawerContent)
+//                                                    for (up in uplist) {
+//                                                        loadUpInfo(up)
+//                                                    }
+                                                loadManyUpInfos()
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace();
+                                        runOnUiThread {
+                                            Toast.makeText(this@MainActivity, "短链接解析失败", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+
+                            })
+
+                        }
+                        .setNegativeButton("否", null)
+                        .show()
+                }
+            }
+        }catch (_:Exception) {}
+
+
     }
 
     // 读取单个直播间信息 不可并发、不可频繁请求
