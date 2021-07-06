@@ -649,7 +649,8 @@ class MainActivity : AppCompatActivity() {
                 val url = URL(it)
                 if (listOf("b23.tv").contains(url.host)) {
                     AlertDialog.Builder(this)
-                        .setTitle("添加 $clip ?")
+                        .setTitle("尝试解析解析剪贴板的分享链接？")
+                        .setMessage(clip)
                         .setPositiveButton("是") { _, _ ->
                             OkHttpClient().newCall(
                                 Request.Builder()
