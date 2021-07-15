@@ -1,5 +1,7 @@
 # DD_Monitor-android-kotlin
 
+![GitHub all releases](https://img.shields.io/github/downloads/congHu/DD_Monitor-android-kotlin/total)
+
 ## 版本特性
 - 支持Android7.0以上。
 - 支持直播间id添加UP主。
