@@ -904,10 +904,11 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 if (b3 < 0) b3 += 256
 
                                 val nextLen = b2 * 256 + b3
+//                                Log.d("danmu", "$nextLen = $b2 *256 + $b3 / $len / ${unzipped.size}")
                                 val jstr = String(
                                     unzipped,
                                     len + 16,
-                                    len + nextLen,
+                                    nextLen - 16,
                                     Charsets.UTF_8
                                 )
                                 val jobj = JSONObject(jstr)
@@ -985,10 +986,11 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                     }
                                 }
 
-                                len += 16 + nextLen
+                                len += nextLen
                             }
                         } catch (e: Exception) {
-
+//                            Log.d("danmu", e.toString() + " " + e.message)
+//                            e.printStackTrace()
                         }
 
                     }
