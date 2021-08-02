@@ -985,7 +985,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                     }
                                 }
 
-                                len += nextLen
+                                len += 16 + nextLen
                             }
                         } catch (e: Exception) {
 
