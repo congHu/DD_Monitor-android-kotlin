@@ -553,6 +553,9 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var socket: WebSocket? = null
     var socketTimer: Timer? = null
 
+    var startTime = ""
+    var recordingDurationLong = 0L
+
     /**
      * roomId setter 设置后立即开始加载播放
      */
@@ -645,8 +648,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
             })
 
-            val now = SimpleDateFormat("yyyyMMddHHmmss").format(Date())
-            var recordingDurationLong = 0L
+            startTime = SimpleDateFormat("yyyyMMddHHmmss").format(Date())
+            recordingDurationLong = 0L
 
             // 加载视频流信息
             OkHttpClient().newCall(
@@ -752,7 +755,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                             File("${Environment.getExternalStorageDirectory().path}/DDPlayer/Records/$value/")
                                         if (!dir.exists()) dir.mkdirs()
 
-                                        val cacheFile = File(dir, "$now.flv")
+                                        val cacheFile = File(dir, "$startTime.flv")
                                         val outputStream = FileOutputStream(cacheFile)
 
                                         var len: Int
@@ -805,244 +808,254 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             })
 
             // 连接弹幕socket
-            socket = OkHttpClient.Builder().build().newWebSocket(Request.Builder()
-                .url(
-                    "wss://broadcastlv.chat.bilibili.com:2245/sub"
-                ).build(), object : WebSocketListener() {
-                override fun onOpen(webSocket: WebSocket, response: Response) {
-                    super.onOpen(webSocket, response)
-                    Log.d("danmu", "open")
+            connectDanmu()
+        }
 
-                    // 连接成功，发送加入直播间的请求
-                    val req = "{\"roomid\":$value}"
-                    val payload = ByteArray(16 + req.length)
+    var reconnecting = false
+    fun connectDanmu() {
+        socket = OkHttpClient.Builder().build().newWebSocket(Request.Builder()
+            .url(
+                "wss://broadcastlv.chat.bilibili.com:2245/sub"
+            ).build(), object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                super.onOpen(webSocket, response)
+                Log.d("danmu", "open")
 
-                    val head = byteArrayOf(
-                        0x00, 0x00, 0x00, (16 + req.length).toByte(),
-                        0x00, 0x10, 0x00, 0x01,
-                        0x00, 0x00, 0x00, 0x07,
-                        0x00, 0x00, 0x00, 0x01
-                    )
+                // 连接成功，发送加入直播间的请求
+                val req = "{\"roomid\":$roomId}"
+                val payload = ByteArray(16 + req.length)
 
-                    System.arraycopy(head, 0, payload, 0, head.size)
-                    val reqBytes = req.toByteArray()
-                    System.arraycopy(
-                        reqBytes,
-                        0,
-                        payload,
-                        head.size,
-                        reqBytes.size
-                    )
+                val head = byteArrayOf(
+                    0x00, 0x00, 0x00, (16 + req.length).toByte(),
+                    0x00, 0x10, 0x00, 0x01,
+                    0x00, 0x00, 0x00, 0x07,
+                    0x00, 0x00, 0x00, 0x01
+                )
 
-                    socket?.send(payload.toByteString(0, payload.size))
+                System.arraycopy(head, 0, payload, 0, head.size)
+                val reqBytes = req.toByteArray()
+                System.arraycopy(
+                    reqBytes,
+                    0,
+                    payload,
+                    head.size,
+                    reqBytes.size
+                )
 
-                    // 开始心跳包发送
-                    socketTimer = Timer()
-                    socketTimer!!.schedule(object : TimerTask() {
-                        override fun run() {
-                            Log.d("danmu", "heartbeat")
-                            socket?.send(
-                                byteArrayOf(
-                                    0x00, 0x00, 0x00, 0x10,
-                                    0x00, 0x10, 0x00, 0x01,
-                                    0x00, 0x00, 0x00, 0x02,
-                                    0x00, 0x00, 0x00, 0x01
-                                ).toByteString()
-                            )
-                        }
+                socket?.send(payload.toByteString(0, payload.size))
 
-                    }, 0, 30000)
-                }
+                // 开始心跳包发送
+//                socketTimer = Timer()
+//                socketTimer!!.schedule(object : TimerTask() {
+//                    override fun run() {
+//                        Log.d("danmu", "heartbeat")
+//                        socket?.send(
+//                            byteArrayOf(
+//                                0x00, 0x00, 0x00, 0x10,
+//                                0x00, 0x10, 0x00, 0x01,
+//                                0x00, 0x00, 0x00, 0x02,
+//                                0x00, 0x00, 0x00, 0x01
+//                            ).toByteString()
+//                        )
+//                    }
+//
+//                }, 0, 30000)
+            }
 
-                override fun onMessage(
-                    webSocket: WebSocket,
-                    bytes: ByteString
-                ) {
-                    super.onMessage(webSocket, bytes)
-                    val byteArray = bytes.toByteArray()
-                    if (byteArray[11] == 8.toByte()) {
-                        handler.post {
-                            danmuList.add("[系统] 已连接弹幕")
-                            danmuListViewAdapter.notifyDataSetInvalidated()
-                            danmuListView.setSelection(danmuListView.bottom)
-                            interpreterList.add("[系统] 已连接弹幕")
-                            interpreterViewAdapter.notifyDataSetInvalidated()
-                            interpreterListView.setSelection(interpreterListView.bottom)
-                        }
-                    }
-                    if (byteArray[7] == 2.toByte()) {
-
-                        // 解压
-                        val bis = ByteArrayInputStream(
-                            byteArray,
-                            16,
-                            byteArray.size - 16
-                        )
-                        val iis = InflaterInputStream(bis)
-                        val buf = ByteArray(1024)
-
-                        val bos = ByteArrayOutputStream()
-
-
-                        while (true) {
-                            val c = iis.read(buf)
-                            if (c == -1) break
-                            bos.write(buf, 0, c)
-                        }
-                        bos.flush()
-                        iis.close()
-
-                        val unzipped = bos.toByteArray()
-
-                        // 解压后是多条json连在一条字符串里，可根据每一条json前面16个字节的头，获取到每条json的长度
-                        var len = 0
-                        try {
-                            while (len < unzipped.size) {
-                                var b2 = unzipped[len + 2].toInt()
-                                if (b2 < 0) b2 += 256
-                                var b3 = unzipped[len + 3].toInt()
-                                if (b3 < 0) b3 += 256
-
-                                val nextLen = b2 * 256 + b3
-//                                Log.d("danmu", "$nextLen = $b2 *256 + $b3 / $len / ${unzipped.size}")
-                                val jstr = String(
-                                    unzipped,
-                                    len + 16,
-                                    nextLen - 16,
-                                    Charsets.UTF_8
-                                )
-                                val jobj = JSONObject(jstr)
-                                val cmd = jobj.getString("cmd")
-                                if (cmd == "DANMU_MSG") {
-                                    val danmu = jobj.getJSONArray("info").getString(1)
-                                    Log.d("danmu", "$value $danmu")
-                                    handler.post {
-                                        // 弹幕目前最多显示20条，是否要搞一个设置项？
-                                        if (danmuList.count() > 20) {
-                                            danmuList.removeFirst()
-                                        }
-                                        danmuList.add(danmu)
-                                        danmuListViewAdapter.notifyDataSetInvalidated()
-                                        danmuListView.setSelection(danmuListView.bottom)
-
-                                        // 过滤同传弹幕
-                                        if (danmu.contains("【")
-                                            || danmu.contains("[")
-                                            || danmu.contains("{")
-                                        ) {
-                                            if (interpreterList.count() > 20) {
-                                                interpreterList.removeFirst()
-                                            }
-                                            interpreterList.add(danmu)
-                                            interpreterViewAdapter.notifyDataSetInvalidated()
-                                            interpreterListView.setSelection(interpreterListView.bottom)
-                                        }
-                                    }
-                                    if (isRecording) {
-                                        try {
-                                            val dir =
-                                                File("${Environment.getExternalStorageDirectory().path}/DDPlayer/Records/$value/")
-                                            if (!dir.exists()) dir.mkdirs()
-
-                                            val cacheFile = File(dir, "$now-danmu.txt")
-                                            val writer = FileWriter(cacheFile, true)
-                                            writer.write("${RecordingUtils.minuteString(recordingDurationLong)} $danmu\n")
-                                            writer.close()
-                                        }catch (e: Exception) {
-
-                                        }
-                                    }
-                                } else if (cmd == "SUPER_CHAT_MESSAGE") {
-                                    Log.d("SC", jobj.toString())
-                                    val danmu = jobj.getJSONObject("data").getString("message")
-                                    handler.post {
-                                        if (danmuList.count() > 20) {
-                                            danmuList.removeFirst()
-                                        }
-                                        danmuList.add("[SC] $danmu")
-                                        danmuListViewAdapter.notifyDataSetInvalidated()
-                                        danmuListView.setSelection(danmuListView.bottom)
-
-                                        if (interpreterList.count() > 20) {
-                                            interpreterList.removeFirst()
-                                        }
-                                        interpreterList.add("[SC] $danmu")
-                                        interpreterViewAdapter.notifyDataSetInvalidated()
-                                        interpreterListView.setSelection(interpreterListView.bottom)
-                                    }
-                                    if (isRecording) {
-                                        try {
-                                            val dir =
-                                                File("${Environment.getExternalStorageDirectory().path}/DDPlayer/Records/$value/")
-                                            if (!dir.exists()) dir.mkdirs()
-
-                                            val cacheFile = File(dir, "$now-danmu.txt")
-                                            val writer = FileWriter(cacheFile, true)
-                                            writer.write("${RecordingUtils.minuteString(recordingDurationLong)} [SC] $danmu\n")
-                                            writer.close()
-                                        }catch (e: Exception) {
-
-                                        }
-                                    }
-                                }
-
-                                len += nextLen
-                            }
-                        } catch (e: Exception) {
-//                            Log.d("danmu", e.toString() + " " + e.message)
-//                            e.printStackTrace()
-                        }
-
-                    }
-
-                }
-
-                override fun onFailure(
-                    webSocket: WebSocket,
-                    t: Throwable,
-                    response: Response?
-                ) {
-                    super.onFailure(webSocket, t, response)
-                    Log.d("danmu", "$roomId fail ${t.message}")
-                    t.printStackTrace()
-                }
-
-                override fun onClosing(
-                    webSocket: WebSocket,
-                    code: Int,
-                    reason: String
-                ) {
-                    super.onClosing(webSocket, code, reason)
-                    Log.d("danmu", "closing")
-
-                }
-
-                override fun onClosed(
-                    webSocket: WebSocket,
-                    code: Int,
-                    reason: String
-                ) {
-                    super.onClosed(webSocket, code, reason)
-                    Log.d("danmu", "close")
+            override fun onMessage(
+                webSocket: WebSocket,
+                bytes: ByteString
+            ) {
+                super.onMessage(webSocket, bytes)
+                val byteArray = bytes.toByteArray()
+                Log.d("danmu", bytes.hex())
+                if (!reconnecting && byteArray[11] == 8.toByte()) {
                     handler.post {
-                        if (danmuList.count() > 20) {
-                            danmuList.removeFirst()
-                        }
-                        danmuList.add("[系统] 弹幕已断开，请刷新")
+                        danmuList.add("[系统] 已连接弹幕")
                         danmuListViewAdapter.notifyDataSetInvalidated()
                         danmuListView.setSelection(danmuListView.bottom)
-
-                        if (interpreterList.count() > 20) {
-                            interpreterList.removeFirst()
-                        }
-                        interpreterList.add("[系统] 弹幕已断开，请刷新")
+                        interpreterList.add("[系统] 已连接弹幕")
                         interpreterViewAdapter.notifyDataSetInvalidated()
                         interpreterListView.setSelection(interpreterListView.bottom)
                     }
                 }
-            })
-        }
+                reconnecting = false
+                if (byteArray[7] == 2.toByte()) {
 
+                    // 解压
+                    val bis = ByteArrayInputStream(
+                        byteArray,
+                        16,
+                        byteArray.size - 16
+                    )
+                    val iis = InflaterInputStream(bis)
+                    val buf = ByteArray(1024)
+
+                    val bos = ByteArrayOutputStream()
+
+
+                    while (true) {
+                        val c = iis.read(buf)
+                        if (c == -1) break
+                        bos.write(buf, 0, c)
+                    }
+                    bos.flush()
+                    iis.close()
+
+                    val unzipped = bos.toByteArray()
+
+                    // 解压后是多条json连在一条字符串里，可根据每一条json前面16个字节的头，获取到每条json的长度
+                    var len = 0
+                    try {
+                        while (len < unzipped.size) {
+                            var b2 = unzipped[len + 2].toInt()
+                            if (b2 < 0) b2 += 256
+                            var b3 = unzipped[len + 3].toInt()
+                            if (b3 < 0) b3 += 256
+
+                            val nextLen = b2 * 256 + b3
+//                                Log.d("danmu", "$nextLen = $b2 *256 + $b3 / $len / ${unzipped.size}")
+                            val jstr = String(
+                                unzipped,
+                                len + 16,
+                                nextLen - 16,
+                                Charsets.UTF_8
+                            )
+                            val jobj = JSONObject(jstr)
+                            val cmd = jobj.getString("cmd")
+                            if (cmd == "DANMU_MSG") {
+                                val danmu = jobj.getJSONArray("info").getString(1)
+                                Log.d("danmu", "$roomId $danmu")
+                                handler.post {
+                                    // 弹幕目前最多显示20条，是否要搞一个设置项？
+                                    if (danmuList.count() > 20) {
+                                        danmuList.removeFirst()
+                                    }
+                                    danmuList.add(danmu)
+                                    danmuListViewAdapter.notifyDataSetInvalidated()
+                                    danmuListView.setSelection(danmuListView.bottom)
+
+                                    // 过滤同传弹幕
+                                    if (danmu.contains("【")
+                                        || danmu.contains("[")
+                                        || danmu.contains("{")
+                                    ) {
+                                        if (interpreterList.count() > 20) {
+                                            interpreterList.removeFirst()
+                                        }
+                                        interpreterList.add(danmu)
+                                        interpreterViewAdapter.notifyDataSetInvalidated()
+                                        interpreterListView.setSelection(interpreterListView.bottom)
+                                    }
+                                }
+                                if (isRecording) {
+                                    try {
+                                        val dir =
+                                            File("${Environment.getExternalStorageDirectory().path}/DDPlayer/Records/$roomId/")
+                                        if (!dir.exists()) dir.mkdirs()
+
+                                        val cacheFile = File(dir, "$startTime-danmu.txt")
+                                        val writer = FileWriter(cacheFile, true)
+                                        writer.write("${RecordingUtils.minuteString(recordingDurationLong)} $danmu\n")
+                                        writer.close()
+                                    }catch (e: Exception) {
+
+                                    }
+                                }
+                            } else if (cmd == "SUPER_CHAT_MESSAGE") {
+                                Log.d("SC", jobj.toString())
+                                val danmu = jobj.getJSONObject("data").getString("message")
+                                handler.post {
+                                    if (danmuList.count() > 20) {
+                                        danmuList.removeFirst()
+                                    }
+                                    danmuList.add("[SC] $danmu")
+                                    danmuListViewAdapter.notifyDataSetInvalidated()
+                                    danmuListView.setSelection(danmuListView.bottom)
+
+                                    if (interpreterList.count() > 20) {
+                                        interpreterList.removeFirst()
+                                    }
+                                    interpreterList.add("[SC] $danmu")
+                                    interpreterViewAdapter.notifyDataSetInvalidated()
+                                    interpreterListView.setSelection(interpreterListView.bottom)
+                                }
+                                if (isRecording) {
+                                    try {
+                                        val dir =
+                                            File("${Environment.getExternalStorageDirectory().path}/DDPlayer/Records/$roomId/")
+                                        if (!dir.exists()) dir.mkdirs()
+
+                                        val cacheFile = File(dir, "$startTime-danmu.txt")
+                                        val writer = FileWriter(cacheFile, true)
+                                        writer.write("${RecordingUtils.minuteString(recordingDurationLong)} [SC] $danmu\n")
+                                        writer.close()
+                                    }catch (e: Exception) {
+
+                                    }
+                                }
+                            }
+
+                            len += nextLen
+                        }
+                    } catch (e: Exception) {
+//                            Log.d("danmu", e.toString() + " " + e.message)
+//                            e.printStackTrace()
+                    }
+
+                }
+
+            }
+
+            override fun onFailure(
+                webSocket: WebSocket,
+                t: Throwable,
+                response: Response?
+            ) {
+                super.onFailure(webSocket, t, response)
+                Log.d("danmu", "$roomId fail ${t.message}")
+                t.printStackTrace()
+//                socket?.cancel()
+                socket?.close(4999, "failure")
+                reconnecting = true
+                connectDanmu()
+            }
+
+            override fun onClosing(
+                webSocket: WebSocket,
+                code: Int,
+                reason: String
+            ) {
+                super.onClosing(webSocket, code, reason)
+                Log.d("danmu", "closing")
+
+            }
+
+            override fun onClosed(
+                webSocket: WebSocket,
+                code: Int,
+                reason: String
+            ) {
+                super.onClosed(webSocket, code, reason)
+                Log.d("danmu", "close")
+                handler.post {
+                    if (danmuList.count() > 20) {
+                        danmuList.removeFirst()
+                    }
+                    danmuList.add("[系统] 弹幕已断开，请刷新")
+                    danmuListViewAdapter.notifyDataSetInvalidated()
+                    danmuListView.setSelection(danmuListView.bottom)
+
+                    if (interpreterList.count() > 20) {
+                        interpreterList.removeFirst()
+                    }
+                    interpreterList.add("[系统] 弹幕已断开，请刷新")
+                    interpreterViewAdapter.notifyDataSetInvalidated()
+                    interpreterListView.setSelection(interpreterListView.bottom)
+                }
+            }
+        })
+    }
     // 宽高变化时调用，调整工具条，使得按钮隐藏，不超出宽度
     fun adjustControlBar() {
         Log.d("ddplayer", "width $width ${context.resources.displayMetrics.density}")
