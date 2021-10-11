@@ -31,6 +31,7 @@ import com.squareup.picasso.Picasso
 import okhttp3.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
+import org.brotli.dec.BrotliInputStream
 import org.json.JSONObject
 import java.io.*
 import java.text.SimpleDateFormat
@@ -822,7 +823,12 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                 Log.d("danmu", "open")
 
                 // 连接成功，发送加入直播间的请求
-                val req = "{\"roomid\":$roomId}"
+//                val req = "{\"roomid\":$roomId}"
+                val reqJson = JSONObject()
+                reqJson.put("roomid", roomId!!.toInt())
+                reqJson.put("protover", 3)
+                val req = reqJson.toString()
+                Log.d("danmu", "req $req")
                 val payload = ByteArray(16 + req.length)
 
                 val head = byteArrayOf(
@@ -845,21 +851,25 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                 socket?.send(payload.toByteString(0, payload.size))
 
                 // 开始心跳包发送
-//                socketTimer = Timer()
-//                socketTimer!!.schedule(object : TimerTask() {
-//                    override fun run() {
-//                        Log.d("danmu", "heartbeat")
+                socketTimer = Timer()
+                socketTimer!!.schedule(object : TimerTask() {
+                    override fun run() {
+                        Log.d("danmu", "heartbeat")
+//                        val obj = "[object Object]"
+                        val byteArray = byteArrayOf(
+                            0x00, 0x00, 0x00, 0x10,//(16+obj.length).toByte(),
+                            0x00, 0x10, 0x00, 0x01,
+                            0x00, 0x00, 0x00, 0x02,
+                            0x00, 0x00, 0x00, 0x01
+                        )
+//                        byteArray.addAll(obj.toByteArray().toList())
 //                        socket?.send(
-//                            byteArrayOf(
-//                                0x00, 0x00, 0x00, 0x10,
-//                                0x00, 0x10, 0x00, 0x01,
-//                                0x00, 0x00, 0x00, 0x02,
-//                                0x00, 0x00, 0x00, 0x01
-//                            ).toByteString()
+//                            byteArray.toByteArray().toByteString()
 //                        )
-//                    }
-//
-//                }, 0, 30000)
+                        socket?.send(byteArray.toByteString())
+                    }
+
+                }, 0, 30000)
             }
 
             override fun onMessage(
@@ -868,7 +878,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             ) {
                 super.onMessage(webSocket, bytes)
                 val byteArray = bytes.toByteArray()
-                Log.d("danmu", bytes.hex())
+//                Log.d("danmu", bytes.hex())
                 if (!reconnecting && byteArray[11] == 8.toByte()) {
                     handler.post {
                         danmuList.add("[系统] 已连接弹幕")
@@ -880,7 +890,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     }
                 }
                 reconnecting = false
-                if (byteArray[7] == 2.toByte()) {
+                if (byteArray[7] == 3.toByte() || byteArray[7] == 2.toByte()) {
 
                     // 解压
                     val bis = ByteArrayInputStream(
@@ -888,11 +898,17 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                         16,
                         byteArray.size - 16
                     )
-                    val iis = InflaterInputStream(bis)
+                    var iis:InputStream? = null
+                    if (byteArray[7] == 3.toByte()) {
+                        iis = BrotliInputStream(bis)
+                    }else if (byteArray[7] == 2.toByte()) {
+                        iis = InflaterInputStream(bis)
+                    }
                     val buf = ByteArray(1024)
 
                     val bos = ByteArrayOutputStream()
 
+                    if (iis == null) return
 
                     while (true) {
                         val c = iis.read(buf)
@@ -925,7 +941,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                             val cmd = jobj.getString("cmd")
                             if (cmd == "DANMU_MSG") {
                                 val danmu = jobj.getJSONArray("info").getString(1)
-                                Log.d("danmu", "$roomId $danmu")
+//                                Log.d("danmu", "$roomId $danmu")
                                 handler.post {
                                     // 弹幕目前最多显示20条，是否要搞一个设置项？
                                     if (danmuList.count() > 20) {
@@ -1016,9 +1032,25 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                 Log.d("danmu", "$roomId fail ${t.message}")
                 t.printStackTrace()
 //                socket?.cancel()
-                socket?.close(4999, "failure")
-                reconnecting = true
-                connectDanmu()
+//                socket?.close(4999, "failure")
+//                reconnecting = true
+//                connectDanmu()
+
+                handler.post {
+                    if (danmuList.count() > 20) {
+                        danmuList.removeFirst()
+                    }
+                    danmuList.add("[系统] 弹幕可能已断开，请刷新")
+                    danmuListViewAdapter.notifyDataSetInvalidated()
+                    danmuListView.setSelection(danmuListView.bottom)
+
+                    if (interpreterList.count() > 20) {
+                        interpreterList.removeFirst()
+                    }
+                    interpreterList.add("[系统] 弹幕可能已断开，请刷新")
+                    interpreterViewAdapter.notifyDataSetInvalidated()
+                    interpreterListView.setSelection(interpreterListView.bottom)
+                }
             }
 
             override fun onClosing(
@@ -1038,21 +1070,21 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             ) {
                 super.onClosed(webSocket, code, reason)
                 Log.d("danmu", "close")
-                handler.post {
-                    if (danmuList.count() > 20) {
-                        danmuList.removeFirst()
-                    }
-                    danmuList.add("[系统] 弹幕已断开，请刷新")
-                    danmuListViewAdapter.notifyDataSetInvalidated()
-                    danmuListView.setSelection(danmuListView.bottom)
-
-                    if (interpreterList.count() > 20) {
-                        interpreterList.removeFirst()
-                    }
-                    interpreterList.add("[系统] 弹幕已断开，请刷新")
-                    interpreterViewAdapter.notifyDataSetInvalidated()
-                    interpreterListView.setSelection(interpreterListView.bottom)
-                }
+//                handler.post {
+//                    if (danmuList.count() > 20) {
+//                        danmuList.removeFirst()
+//                    }
+//                    danmuList.add("[系统] 弹幕已断开，请刷新")
+//                    danmuListViewAdapter.notifyDataSetInvalidated()
+//                    danmuListView.setSelection(danmuListView.bottom)
+//
+//                    if (interpreterList.count() > 20) {
+//                        interpreterList.removeFirst()
+//                    }
+//                    interpreterList.add("[系统] 弹幕已断开，请刷新")
+//                    interpreterViewAdapter.notifyDataSetInvalidated()
+//                    interpreterListView.setSelection(interpreterListView.bottom)
+//                }
             }
         })
     }
