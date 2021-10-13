@@ -44,3 +44,4 @@
 - ios版：[https://github.com/congHu/DD_Monitor-ios-Swift](https://github.com/congHu/DD_Monitor-ios-Swift)
 - [https://github.com/zhimingshenjun/DD_Monitor](https://github.com/zhimingshenjun/DD_Monitor)
 - [https://github.com/lovelyyoshino/Bilibili-Live-API](https://github.com/lovelyyoshino/Bilibili-Live-API)
+- [https://github.com/MoyuScript/bilibili-api](https://github.com/MoyuScript/bilibili-api)
