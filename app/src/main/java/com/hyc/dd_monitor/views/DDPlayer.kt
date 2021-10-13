@@ -24,6 +24,7 @@ import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.hyc.dd_monitor.R
 import com.hyc.dd_monitor.models.PlayerOptions
@@ -822,9 +823,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             cm.getNetworkCapabilities(cm.activeNetwork)?.run {
                 if (hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
                     Log.d("checkAndToastCellular", "cellular")
-                    handler.post {
-                        Toast.makeText(context, "正在使用流量数据，请注意消耗", Toast.LENGTH_LONG).show()
-                    }
+                    Toast.makeText(context, "正在使用流量数据，请注意消耗", Toast.LENGTH_SHORT).show()
                 }
             }
         }
