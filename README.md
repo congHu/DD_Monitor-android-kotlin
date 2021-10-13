@@ -34,7 +34,6 @@
 
 ## 给开发者买杯奶茶
 [qrcode.png](qrcode.png)
-曾经的我，以为勤劳就会有收获。现在发现，无论多勤劳，收获都是别人的。
 
 ## 开源依赖
 - [https://github.com/square/okhttp](https://github.com/square/okhttp)
