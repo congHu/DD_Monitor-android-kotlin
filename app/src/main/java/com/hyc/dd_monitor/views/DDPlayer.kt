@@ -5,6 +5,8 @@ import android.content.ClipDescription
 import android.content.Context
 import android.content.Intent
 import android.graphics.Typeface
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Environment
 import android.os.Handler
@@ -604,6 +606,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
             playerNameBtn.text = "#${playerId+1}: 加载中"
 
+            checkAndToastCellular()
+
             // 加载基础信息
             OkHttpClient().newCall(
                     Request.Builder()
@@ -811,6 +815,25 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             // 连接弹幕socket
             connectDanmu()
         }
+
+    private fun checkAndToastCellular() {
+        Log.d("checkAndToastCellular", "1")
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
+        Log.d("checkAndToastCellular", "cm $cm")
+        cm?.run {
+            cm.getNetworkCapabilities(cm.activeNetwork)?.run {
+                Log.d("checkAndToastCellular", "nc $this")
+                Log.d("checkAndToastCellular", "1:"+hasCapability(NetworkCapabilities.TRANSPORT_CELLULAR)+"2:"+hasCapability(NetworkCapabilities.TRANSPORT_WIFI))
+                if (hasCapability(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    // 实测一台安卓9的荣耀，一台安卓10的realme，关掉wifi之后就是true
+                    Log.d("checkAndToastCellular", "cellular")
+                    handler.post {
+                        Toast.makeText(context, "正在使用流量数据，请注意消耗", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
 
     var reconnecting = false
     fun connectDanmu() {
