@@ -9,9 +9,9 @@
     >
 
     <com.google.android.exoplayer2.ui.PlayerView
+        android:id="@+id/dd_player_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:id="@+id/dd_player_view"
         app:use_controller="false"
 
         />
@@ -120,6 +120,20 @@
         android:orientation="horizontal"
         android:id="@+id/player_control_bar"
         >
+
+        <!--/*视频模式显示-->
+        <Button
+            android:visibility="gone"
+            android:layout_width="30dp"
+            android:layout_height="match_parent"
+            android:padding="0dp"
+            android:background="@android:color/transparent"
+            android:textColor="#ffffff"
+            android:text="&#xe618;"
+            android:id="@+id/video_play_pause_btn"
+            />
+        <!--视频模式显示*/-->
+
         <Button
             android:layout_width="30dp"
             android:layout_height="match_parent"
@@ -157,8 +171,41 @@
             android:textSize="11sp"
             android:id="@+id/qn_btn"
             />
+
+        <!--/*视频模式显示-->
         <Button
+            android:visibility="gone"
+            android:layout_width="30dp"
+            android:layout_height="match_parent"
+            android:padding="0dp"
+            android:background="@android:color/transparent"
+            android:textColor="#ffffff"
+            android:text="&#xe696;"
+            android:id="@+id/video_options_btn"
+            />
+        <TextView
+            android:visibility="gone"
             android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="11sp"
+            android:text="0:00"
+            android:id="@+id/video_time_label"
+            />
+        <SeekBar
+            android:visibility="gone"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:thumbTint="#ffffff"
+            android:progressTint="#ffffff"
+            android:id="@+id/video_seek_bar"
+            />
+        <!--视频模式显示*/-->
+
+        <!--视频模式隐藏-->
+        <Button
+            android:layout_width="0dp"
             android:layout_height="match_parent"
             android:text="#"
             android:padding="0dp"
@@ -171,6 +218,7 @@
             android:textSize="13sp"
             android:maxLines="1"
             android:lines="1"
+            android:layout_weight="1"
             />
     </LinearLayout>
 
@@ -245,5 +293,17 @@
             />
     </FrameLayout>
 
+    <Button
+        android:id="@+id/open_media_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@android:color/transparent"
+        android:text="打开…"
+        android:textColor="#ffffff"
+        android:textSize="13sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

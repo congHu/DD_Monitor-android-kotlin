@@ -20,10 +20,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.hyc.dd_monitor.R
@@ -42,6 +45,10 @@ import java.util.*
 import java.util.zip.InflaterInputStream
 
 class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
+
+    enum class MediaType(value:Int) {
+        LIVE(0), BV(1), HTTP(2)
+    }
 
     // 设置窗口序号#
     var playerId: Int = playerId
@@ -130,6 +137,12 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var recordingSize: TextView
 
     var volumeChangedListener: SeekBar.OnSeekBarChangeListener
+
+    var openMediaBtn: Button
+    var videoPlayPauseBtn: Button
+    var videoOptionBtn: Button
+    var videoTimeLabel: Button
+    var videoSeekBar: SeekBar
 
     init {
         layoutParams = ViewGroup.LayoutParams(
@@ -521,6 +534,13 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
 
         showControlBar()
+
+        // 打开按钮
+        openMediaBtn = findViewById(R.id.open_media_btn)
+        videoPlayPauseBtn = findViewById(R.id.video_play_pause_btn)
+        videoOptionBtn = findViewById(R.id.video_options_btn)
+        videoTimeLabel = findViewById(R.id.video_time_label)
+        videoSeekBar = findViewById(R.id.video_seek_bar)
     }
 
     fun showQnMenu() {
@@ -560,29 +580,52 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var startTime = ""
     var recordingDurationLong = 0L
 
+    fun resetUI() {
+        // 初始化播放器相关、弹幕socket相关的对象
+        playerView.player = null
+        player?.stop()
+        player?.release()
+        socketTimer?.cancel()
+        socket?.close(1000, null)
+
+        shadowFaceImg.setImageDrawable(null)
+
+        player = null
+        socket = null
+        socketTimer = null
+
+        playerNameBtn.text = "#${playerId+1}: 空"
+        shadowTextView.text = "#${playerId+1}"
+
+        recordingView.visibility = GONE
+        recordingTimer?.cancel()
+        recordingTimer = null
+
+        openMediaBtn.visibility = View.VISIBLE
+
+        // 重置为直播界面
+        videoPlayPauseBtn.visibility = View.GONE
+        videoOptionBtn.visibility = View.GONE
+        videoTimeLabel.visibility = View.GONE
+        videoSeekBar.visibility = View.GONE
+        qnBtn.visibility = View.VISIBLE
+        playerNameBtn.visibility = View.VISIBLE
+    }
     /**
      * roomId setter 设置后立即开始加载播放
      */
     var roomId: String? = null
         set(value) {
-            // 初始化播放器相关、弹幕socket相关的对象
-            playerView.player = null
-            player?.stop()
-            player?.release()
-            socketTimer?.cancel()
-            socket?.close(1000, null)
+            resetUI()
+            // set null 表示关闭了当前的播放 窗口置空 录像停止
+            if (value == null) {
+                isRecording = false
+                return
+            }
+            // 到这了就表示不为空了，开始加载
 
-            shadowFaceImg.setImageDrawable(null)
-
-            player = null
-            socket = null
-            socketTimer = null
-
-            playerNameBtn.text = "#${playerId+1}: 空"
-            shadowTextView.text = "#${playerId+1}"
-
-            if (value != null && field != value) {
-                // 新的id则弹幕清屏
+            // 新的id则弹幕清屏
+            if (field != value) {
                 danmuList.removeAll(danmuList)
                 danmuListViewAdapter.notifyDataSetInvalidated()
 
@@ -591,30 +634,23 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
                 isRecording = false
             }
+
+            // 判断新旧结束，赋值
             field = value
 
-            recordingView.visibility = GONE
-            recordingTimer?.cancel()
-            recordingTimer = null
+            loadMedia(value, MediaType.LIVE)
+        }
 
-            // set null 表示关闭了当前的播放 窗口置空 录像停止
-            if (value == null) {
-                isRecording = false
-                return
-            }
+    fun loadMedia(value: String, type: MediaType) {
+        playerNameBtn.text = "#${playerId+1}: 加载中"
 
-            // 到这了就表示不为空了，开始加载
-
-            playerNameBtn.text = "#${playerId+1}: 加载中"
-
-            checkAndToastCellular()
-
+        if (type == MediaType.LIVE) {
             // 加载基础信息
             OkHttpClient().newCall(
-                    Request.Builder()
-                            .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$value")
+                Request.Builder()
+                    .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$value")
 //                    .addHeader("Connection", "close")
-                            .build()
+                    .build()
             ).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
 
@@ -627,10 +663,10 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                             val data = jo.getJSONObject("data")
                             val roomInfo = data.getJSONObject("room_info")
                             val anchorInfo =
-                                    data.getJSONObject("anchor_info").getJSONObject("base_info")
+                                data.getJSONObject("anchor_info").getJSONObject("base_info")
 
                             val liveStatus =
-                                    if (roomInfo.getInt("live_status") == 1) "" else "(未开播)"
+                                if (roomInfo.getInt("live_status") == 1) "" else "(未开播)"
                             val uname = anchorInfo.getString("uname")
                             val face = anchorInfo.getString("face").replace("http://", "https://")
 //                            Log.d("shadowFaceImg", shadowFaceImg)
@@ -639,9 +675,13 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 shadowTextView.text = "#${playerId + 1}"
                                 try {
                                     Picasso.get().load(face).transform(RoundImageTransform())
-                                            .into(shadowFaceImg)
+                                        .into(shadowFaceImg)
                                 } catch (e: Exception) {
                                     shadowFaceImg.setImageDrawable(null)
+                                }
+
+                                if (roomInfo.getInt("live_status") == 1) {
+                                    openMediaBtn.visibility = View.GONE
                                 }
 
                             }
@@ -659,10 +699,10 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
             // 加载视频流信息
             OkHttpClient().newCall(
-                    Request.Builder()
-                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
+                Request.Builder()
+                    .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
 //                        .addHeader("Connection", "close")
-                            .build()
+                    .build()
             ).enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
 
@@ -692,6 +732,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 if (isGlobalMuted) 0f else playerOptions.volume
                             player!!.playWhenReady = true
                             player!!.prepare()
+
+                            checkAndToastCellular()
                         }
 
                         if (!isRecording) {
@@ -815,9 +857,64 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
             // 连接弹幕socket
             connectDanmu()
+        }else if (type == MediaType.BV) {
+            loadHttpVideo(value, mapOf(
+                "Referer" to "https://www.bilibili.com/"
+            ))
+        }else if (type == MediaType.HTTP) {
+            loadHttpVideo(value)
+        }
+    }
+
+    fun loadHttpVideo(url: String, headers: Map<String,String>? = null) {
+        val dataSource = DefaultHttpDataSource.Factory()
+
+        if (headers != null) {
+            dataSource.setDefaultRequestProperties(headers)
         }
 
-    private fun checkAndToastCellular() {
+        player = SimpleExoPlayer.Builder(context).build()
+
+        playerView.player = player
+        player!!.volume =
+            if (isGlobalMuted) 0f else playerOptions.volume
+        player!!.playWhenReady = true
+        playerView.useController = true
+        player!!.prepare()
+
+
+        checkAndToastCellular()
+
+        player!!.setMediaSource(
+            ProgressiveMediaSource.Factory(dataSource)
+                .createMediaSource(MediaItem.fromUri(url))
+        )
+
+        player!!.addListener(object : Player.EventListener {
+            override fun onIsLoadingChanged(isLoading: Boolean) {
+                super.onIsLoadingChanged(isLoading)
+                Log.d("playvideo", "isLoading: $isLoading")
+            }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                super.onIsPlayingChanged(isPlaying)
+                Log.d("playvideo", "isPlaying: $isPlaying")
+
+            }
+
+            override fun onPlayerError(error: ExoPlaybackException) {
+                super.onPlayerError(error)
+                Log.d("playvideo", "error: $error")
+                error.printStackTrace()
+            }
+
+            override fun onEvents(player: Player, events: Player.Events) {
+                super.onEvents(player, events)
+                Log.d("playvideo", "events: $events")
+            }
+        })
+    }
+
+    fun checkAndToastCellular() {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
         cm?.run {
             cm.getNetworkCapabilities(cm.activeNetwork)?.run {
