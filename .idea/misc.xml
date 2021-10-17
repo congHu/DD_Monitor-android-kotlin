@@ -3,21 +3,14 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/activity_main.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dd_layout_1.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dd_player.xml" value="0.33" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_danmu_options.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_global_volume.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_layout_options.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_open_media.xml" value="0.33" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_scan_qr.xml" value="0.5" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_uidimport.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_video_pages.xml" value="0.22685185185185186" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_volume_single.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/item_danmu_text.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/item_layout_image.xml" value="0.23333333333333334" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/item_video_page.xml" value="0.22685185185185186" />
-        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/list_item_up.xml" value="0.23333333333333334" />
+        <entry key="app/src/main/res/layout/dd_player.xml" value="0.43548441463299536" />
+        <entry key="app/src/main/res/layout/dialog_danmu_options.xml" value="0.19701086956521738" />
+        <entry key="app/src/main/res/layout/dialog_layout_options.xml" value="0.19701086956521738" />
+        <entry key="app/src/main/res/layout/dialog_open_media.xml" value="0.2453125" />
+        <entry key="app/src/main/res/layout/dialog_video_pages.xml" value="0.1" />
+        <entry key="app/src/main/res/layout/dialog_volume_single.xml" value="0.19701086956521738" />
+        <entry key="app/src/main/res/menu/video_options.xml" value="0.16979166666666667" />
+        <entry key="app/src/main/res/menu/video_options_more.xml" value="0.16979166666666667" />
       </map>
     </option>
   </component>

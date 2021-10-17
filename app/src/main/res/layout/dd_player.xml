@@ -193,12 +193,13 @@
             android:id="@+id/video_time_label"
             />
         <SeekBar
-            android:visibility="gone"
+            android:visibility="visible"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:thumbTint="#ffffff"
             android:progressTint="#ffffff"
+            android:secondaryProgressTint="#ffffff"
             android:id="@+id/video_seek_bar"
             />
         <!--视频模式显示*/-->

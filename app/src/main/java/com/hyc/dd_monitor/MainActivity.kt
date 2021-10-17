@@ -93,7 +93,7 @@ class MainActivity : AppCompatActivity() {
 //                        addFromUrl(clipboard)
                         addFromShareClip(clipboard)
                         // 删除剪贴板避免重复提醒
-                        it.setPrimaryClip(ClipData.newPlainText("",""))
+//                        it.setPrimaryClip(ClipData.newPlainText("",""))
                     }
                 }
             }

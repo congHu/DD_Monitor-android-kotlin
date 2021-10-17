@@ -24,9 +24,12 @@ import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.source.DefaultMediaSourceFactory
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
+import com.google.android.exoplayer2.source.dash.DashMediaSource
 import com.google.android.exoplayer2.ui.PlayerView
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
+import com.google.android.exoplayer2.upstream.*
+import com.google.android.exoplayer2.video.VideoListener
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.hyc.dd_monitor.R
@@ -38,11 +41,14 @@ import okhttp3.*
 import okio.ByteString
 import okio.ByteString.Companion.toByteString
 import org.brotli.dec.BrotliInputStream
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.*
+import java.net.URL
 import java.text.SimpleDateFormat
 import java.util.*
 import java.util.zip.InflaterInputStream
+import kotlin.collections.HashMap
 
 class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
@@ -141,7 +147,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var openMediaBtn: Button
     var videoPlayPauseBtn: Button
     var videoOptionBtn: Button
-    var videoTimeLabel: Button
+    var videoTimeLabel: TextView
     var videoSeekBar: SeekBar
 
     init {
@@ -287,81 +293,144 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
         // 点击窗口名称弹出菜单
         playerNameBtn.setOnClickListener {
-            if (roomId == null) return@setOnClickListener
-            val pop = PopupMenu(context, playerNameBtn)
-            val menuId = if (isHiddenBarBtns) R.menu.player_options_more else R.menu.player_options
-            pop.menuInflater.inflate(menuId, pop.menu)
-            if (player != null && player?.isPlaying == true) {
-                if (recordingTimer == null) {
-                    pop.menu.add(0, 666, 0, "开始录制(beta)")
-                }else{
-                    pop.menu.add(0, 999, 0, "结束录制")
-                }
-            }
 
-            pop.setOnMenuItemClickListener {
-                if (it.itemId == R.id.window_close) {
-                    roomId = null
-                    context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE).edit {
-                        this.putString("roomId${this@DDPlayer.playerId}", null).apply()
-                    }
-                }
-                if (it.itemId == R.id.open_live) {
-                    try {
-                        val intent = Intent()
-                        intent.data = Uri.parse("bilibili://live/$roomId")
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        context.startActivity(intent)
-
-                        playerOptions.volume = 0f
-                        notifyPlayerOptionsChange()
-                    }catch (_: Exception) {
-                        val intent = Intent()
-                        intent.data = Uri.parse("https://live.bilibili.com/$roomId")
-                        context.startActivity(intent)
+            when (mediaType) {
+                MediaType.LIVE -> {
+                    if (roomId == null) return@setOnClickListener
+                    val pop = PopupMenu(context, playerNameBtn)
+                    val menuId = if (isHiddenBarBtns) R.menu.player_options_more else R.menu.player_options
+                    pop.menuInflater.inflate(menuId, pop.menu)
+                    if (player != null && player?.isPlaying == true) {
+                        if (recordingTimer == null) {
+                            pop.menu.add(0, 666, 0, "开始录制(beta)")
+                        } else {
+                            pop.menu.add(0, 999, 0, "结束录制")
+                        }
                     }
 
+                    pop.setOnMenuItemClickListener {
+                        if (it.itemId == R.id.window_close) {
+                            roomId = null
+                            context.getSharedPreferences("sp", AppCompatActivity.MODE_PRIVATE)
+                                .edit {
+                                    this.putString("roomId${this@DDPlayer.playerId}", null).apply()
+                                }
+                        }
+                        if (it.itemId == R.id.open_live) {
+                            try {
+                                val intent = Intent()
+                                intent.data = Uri.parse("bilibili://live/$roomId")
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(intent)
+
+                                playerOptions.volume = 0f
+                                notifyPlayerOptionsChange()
+                            } catch (_: Exception) {
+                                val intent = Intent()
+                                intent.data = Uri.parse("https://live.bilibili.com/$roomId")
+                                context.startActivity(intent)
+                            }
+
+                        }
+                        // 开始录制
+                        if (it.itemId == 666) {
+                            isRecording = true
+                            roomId = roomId
+                        }
+                        // 结束录像
+                        if (it.itemId == 999) {
+                            isRecording = false
+                            //                    roomId = roomId
+                        }
+                        // 下面是工具栏宽度不足时，要呈现的菜单项
+                        if (it.itemId == R.id.refresh_btn) {
+                            this.roomId = roomId
+                        }
+                        if (it.itemId == R.id.volume_btn) {
+                            // 统一使用弹出式音量调节
+                            val dialog = VolumeControlDialog(context)
+                            dialog.title = "音量调节: ${playerNameBtn.text}"
+                            dialog.onSeekBarListener = volumeChangedListener
+                            dialog.volume = (playerOptions.volume * 100f).toInt()
+                            dialog.show()
+                            //                    if (height < context.resources.displayMetrics.density * 130) {
+                            //                        val dialog = VolumeControlDialog(context)
+                            //                        dialog.title = "音量调节: ${playerNameBtn.text}"
+                            //                        dialog.onSeekBarListener = volumeChangedListener
+                            //                        dialog.volume = volumeSlider.progress
+                            //                        dialog.show()
+                            //                    }else{
+                            //                        volumeBar.visibility = VISIBLE
+                            //                    }
+                        }
+                        if (it.itemId == R.id.danmu_btn) {
+                            showDanmuDialog()
+                        }
+                        if (it.itemId == R.id.qn_btn) {
+                            showQnMenu()
+                        }
+                        return@setOnMenuItemClickListener true
+                    }
+                    pop.show()
                 }
-                // 开始录制
-                if (it.itemId == 666) {
-                    isRecording = true
-                    roomId = roomId
+                else -> {
+                    val pop = PopupMenu(context, playerNameBtn)
+                    val menuId = if (isHiddenBarBtns) R.menu.video_options_more else R.menu.video_options
+                    pop.menuInflater.inflate(menuId, pop.menu)
+                    pop.setOnMenuItemClickListener {
+                        when (it.itemId) {
+                            R.id.window_close -> {
+                                roomId = null
+                            }
+                            R.id.open_app -> {
+                                if (mediaType == MediaType.BV && bvId != null) {
+                                    try {
+                                        val intent = Intent()
+                                        intent.data = Uri.parse("bilibili://video/$bvId")
+                                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                        context.startActivity(intent)
+
+//                                    playerOptions.volume = 0f
+                                        player?.pause()
+                                        notifyPlayerOptionsChange()
+                                    } catch (_: Exception) {
+                                        val intent = Intent()
+                                        intent.data = Uri.parse("https://www.bilibili.com/video/$bvId")
+                                        context.startActivity(intent)
+                                    }
+                                }
+                            }
+                            // 下面是工具栏宽度不足时，要呈现的菜单项
+                            R.id.play_pause_btn -> {
+                                if (player != null) {
+                                    if (player!!.isPlaying) {
+                                        player!!.pause()
+                                    }else{
+                                        player!!.play()
+                                    }
+                                }
+                            }
+                            R.id.volume_btn -> {
+                                val dialog = VolumeControlDialog(context)
+                                dialog.title = "音量调节: ${playerNameBtn.text}"
+                                dialog.onSeekBarListener = volumeChangedListener
+                                dialog.volume = (playerOptions.volume * 100f).toInt()
+                                dialog.show()
+                            }
+                            R.id.danmu_btn -> {
+                                showDanmuDialog()
+                            }
+                            R.id.qn_btn -> {
+                                showQnMenu()
+                            }
+                        }
+                        return@setOnMenuItemClickListener true
+                    }
+                    pop.show()
                 }
-                // 结束录像
-                if (it.itemId == 999) {
-                    isRecording = false
-//                    roomId = roomId
-                }
-                // 下面是工具栏宽度不足时，要呈现的菜单项
-                if (it.itemId == R.id.refresh_btn) {
-                    this.roomId = roomId
-                }
-                if (it.itemId == R.id.volume_btn) {
-                    // 统一使用弹出式音量调节
-                    val dialog = VolumeControlDialog(context)
-                    dialog.title = "音量调节: ${playerNameBtn.text}"
-                    dialog.onSeekBarListener = volumeChangedListener
-                    dialog.volume = (playerOptions.volume * 100f).toInt()
-                    dialog.show()
-//                    if (height < context.resources.displayMetrics.density * 130) {
-//                        val dialog = VolumeControlDialog(context)
-//                        dialog.title = "音量调节: ${playerNameBtn.text}"
-//                        dialog.onSeekBarListener = volumeChangedListener
-//                        dialog.volume = volumeSlider.progress
-//                        dialog.show()
-//                    }else{
-//                        volumeBar.visibility = VISIBLE
-//                    }
-                }
-                if (it.itemId == R.id.danmu_btn) {
-                    showDanmuDialog()
-                }
-                if (it.itemId == R.id.qn_btn) {
-                    showQnMenu()
-                }
-                return@setOnMenuItemClickListener true
+
             }
-            pop.show()
+
         }
 
         // 长按拖动功能
@@ -541,6 +610,19 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         videoOptionBtn = findViewById(R.id.video_options_btn)
         videoTimeLabel = findViewById(R.id.video_time_label)
         videoSeekBar = findViewById(R.id.video_seek_bar)
+
+        openMediaBtn.setOnClickListener {
+            val dialog = OpenMediaDialog(context)
+            dialog.onMediaOpenListener = { value, type ->
+                resetUI()
+                loadMedia(value, type)
+            }
+            dialog.onBVInfoLoadListener = { bvid, title, qn ->
+                bvId = bvid
+                playerNameBtn.text = "#${playerId+1}: $title"
+            }
+            dialog.show()
+        }
     }
 
     fun showQnMenu() {
@@ -604,13 +686,21 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         openMediaBtn.visibility = View.VISIBLE
 
         // 重置为直播界面
-        videoPlayPauseBtn.visibility = View.GONE
-        videoOptionBtn.visibility = View.GONE
-        videoTimeLabel.visibility = View.GONE
-        videoSeekBar.visibility = View.GONE
-        qnBtn.visibility = View.VISIBLE
-        playerNameBtn.visibility = View.VISIBLE
+        switchUI()
     }
+
+    fun switchUI(type: MediaType = MediaType.LIVE) {
+        videoPlayPauseBtn.visibility = if (type == MediaType.LIVE) View.GONE else View.VISIBLE
+//        videoOptionBtn.visibility = if (type == MediaType.LIVE) View.GONE else View.VISIBLE
+//        videoTimeLabel.visibility = if (type == MediaType.LIVE) View.GONE else View.VISIBLE
+//        videoSeekBar.visibility = if (type == MediaType.LIVE) View.GONE else View.VISIBLE
+
+        refreshBtn.visibility = if (type == MediaType.LIVE) View.VISIBLE else View.GONE
+//        qnBtn.visibility = if (type == MediaType.LIVE) View.VISIBLE else View.GONE
+//        playerNameBtn.visibility = if (type == MediaType.LIVE) View.VISIBLE else View.GONE
+    }
+
+    var mediaType: MediaType = MediaType.LIVE
     /**
      * roomId setter 设置后立即开始加载播放
      */
@@ -643,254 +733,265 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
     fun loadMedia(value: String, type: MediaType) {
         playerNameBtn.text = "#${playerId+1}: 加载中"
-
+        openMediaBtn.visibility = View.GONE
+        mediaType = type
         if (type == MediaType.LIVE) {
-            // 加载基础信息
-            OkHttpClient().newCall(
-                Request.Builder()
-                    .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$value")
-//                    .addHeader("Connection", "close")
-                    .build()
-            ).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    response.body?.let {
-                        try {
-                            val jo = JSONObject(it.string())
-                            val data = jo.getJSONObject("data")
-                            val roomInfo = data.getJSONObject("room_info")
-                            val anchorInfo =
-                                data.getJSONObject("anchor_info").getJSONObject("base_info")
-
-                            val liveStatus =
-                                if (roomInfo.getInt("live_status") == 1) "" else "(未开播)"
-                            val uname = anchorInfo.getString("uname")
-                            val face = anchorInfo.getString("face").replace("http://", "https://")
-//                            Log.d("shadowFaceImg", shadowFaceImg)
-                            handler.post {
-                                playerNameBtn.text = "#${playerId + 1}: $liveStatus$uname"
-                                shadowTextView.text = "#${playerId + 1}"
-                                try {
-                                    Picasso.get().load(face).transform(RoundImageTransform())
-                                        .into(shadowFaceImg)
-                                } catch (e: Exception) {
-                                    shadowFaceImg.setImageDrawable(null)
-                                }
-
-                                if (roomInfo.getInt("live_status") == 1) {
-                                    openMediaBtn.visibility = View.GONE
-                                }
-
-                            }
-                        } catch (e: Exception) {
-
-                        }
-
-                    }
-                }
-
-            })
-
-            startTime = SimpleDateFormat("yyyyMMddHHmmss").format(Date())
-            recordingDurationLong = 0L
-
-            // 加载视频流信息
-            OkHttpClient().newCall(
-                Request.Builder()
-                    .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
-//                        .addHeader("Connection", "close")
-                    .build()
-            ).enqueue(object : Callback {
-                override fun onFailure(call: Call, e: IOException) {
-
-                }
-
-                override fun onResponse(call: Call, response: Response) {
-                    response.body?.let { it2 ->
-                        var url = ""
-                        try {
-                            url = JSONObject(it2.string())
-                                .getJSONObject("data")
-                                .getJSONArray("durl")
-                                .getJSONObject(0)
-                                .getString("url")
-                        } catch (e: Exception) {
-
-                        }
-                        if (url.isEmpty()) return
-
-                        Log.d("proxyurl", url)
-
-                        handler.post {
-                            player = SimpleExoPlayer.Builder(context).build()
-
-                            playerView.player = player
-                            player!!.volume =
-                                if (isGlobalMuted) 0f else playerOptions.volume
-                            player!!.playWhenReady = true
-                            player!!.prepare()
-
-                            checkAndToastCellular()
-                        }
-
-                        if (!isRecording) {
-                            handler.post {
-                                player!!.setMediaItem(MediaItem.fromUri(url))
-                            }
-                        } else {
-                            var total: Long = 0
-
-                            handler.post {
-                                player?.addListener(object : Player.EventListener {
-                                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                                        super.onIsPlayingChanged(isPlaying)
-                                        Log.d("isplaying", isPlaying.toString())
-                                        if (isPlaying) {
-                                            recordingView.visibility = VISIBLE
-//                                            recordingDuration.text = "0:00"
-                                            recordingSize.text = RecordingUtils.byteString(total)
-                                            recordingTimer = Timer()
-                                            recordingTimer!!.schedule(object : TimerTask() {
-                                                override fun run() {
-                                                    handler.post {
-                                                        recordingDurationLong += 1
-//                                                        recordingDuration.text = ByteUtils.minuteString(recordingDurationLong)
-                                                        recordingSize.text = RecordingUtils.byteString(total)
-                                                    }
-
-                                                }
-                                            }, 1000, 1000)
-                                        }
-                                        else {
-                                            Handler(Looper.getMainLooper()).post {
-//                                                if (isRecording) {
-//                                                    isRecording = false
-//                                                    roomId = this@DDPlayer.roomId
-//                                                }
-                                                player?.play()
-                                            }
-
-
-                                        }
-
-                                    }
-                                })
-                            }
-
-
-                            OkHttpClient().newCall(
-                                Request.Builder()
-                                    .url(url)
-                                    .build()
-                            ).enqueue(object : Callback {
-                                override fun onFailure(call: Call, e: IOException) {
-                                }
-
-                                override fun onResponse(call: Call, response: Response) {
-                                    if (response.code != 200) {
-                                        handler.post {
-                                            isRecording = false
-                                            roomId = this@DDPlayer.roomId
-                                        }
-                                        return
-                                    }
-                                    try {
-                                        val byteStream = response.body!!.byteStream()
-                                        val dir =
-                                            File("${Environment.getExternalStorageDirectory().path}/DDPlayer/Records/$value/")
-                                        if (!dir.exists()) dir.mkdirs()
-
-                                        val cacheFile = File(dir, "$startTime.flv")
-                                        val outputStream = FileOutputStream(cacheFile)
-
-                                        var len: Int
-                                        var loaded = false
-
-                                        val buf = ByteArray(1024 * 1024)
-                                        while (true) {
-                                            len = byteStream.read(buf)
-                                            if (len == -1) break
-
-                                            total += len
-                                            outputStream.write(buf, 0, len)
-                                            outputStream.flush()
-
-                                            if (!loaded) {
-                                                loaded = true
-                                                handler.post {
-                                                    player!!.setMediaItem(MediaItem.fromUri(cacheFile.toUri()))
-                                                }
-                                            }
-
-                                            if (!isRecording) break
-                                        }
-                                        handler.post {
-                                            player?.stop()
-                                            roomId = this@DDPlayer.roomId
-                                            Toast.makeText(context, "录像已保存${cacheFile.path}", Toast.LENGTH_SHORT).show()
-                                        }
-                                        outputStream.close()
-
-                                    } catch (e: Exception) {
-                                        if (isRecording) {
-                                            isRecording = false
-                                            handler.post {
-                                                player?.stop()
-                                                roomId = this@DDPlayer.roomId
-                                            }
-                                        }
-                                    }
-                                }
-
-                            })
-
-                        }
-
-
-                    }
-                }
-
-            })
-
-            // 连接弹幕socket
-            connectDanmu()
+            loadLiveRoom(value)
         }else if (type == MediaType.BV) {
-            loadHttpVideo(value, mapOf(
-                "Referer" to "https://www.bilibili.com/"
-            ))
+            loadBiliVideo(value)
         }else if (type == MediaType.HTTP) {
             loadHttpVideo(value)
         }
     }
 
-    fun loadHttpVideo(url: String, headers: Map<String,String>? = null) {
-        val dataSource = DefaultHttpDataSource.Factory()
+    fun loadLiveRoom(value: String) {
+        // 加载基础信息
+        OkHttpClient().newCall(
+            Request.Builder()
+                .url("https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=$value")
+//                    .addHeader("Connection", "close")
+                .build()
+        ).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
 
-        if (headers != null) {
-            dataSource.setDefaultRequestProperties(headers)
-        }
+            }
 
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.let {
+                    try {
+                        val jo = JSONObject(it.string())
+                        val data = jo.getJSONObject("data")
+                        val roomInfo = data.getJSONObject("room_info")
+                        val anchorInfo =
+                            data.getJSONObject("anchor_info").getJSONObject("base_info")
+
+                        val liveStatus =
+                            if (roomInfo.getInt("live_status") == 1) "" else "(未开播)"
+                        val uname = anchorInfo.getString("uname")
+                        val face = anchorInfo.getString("face").replace("http://", "https://")
+//                            Log.d("shadowFaceImg", shadowFaceImg)
+                        handler.post {
+                            playerNameBtn.text = "#${playerId + 1}: $liveStatus$uname"
+                            shadowTextView.text = "#${playerId + 1}"
+                            try {
+                                Picasso.get().load(face).transform(RoundImageTransform())
+                                    .into(shadowFaceImg)
+                            } catch (e: Exception) {
+                                shadowFaceImg.setImageDrawable(null)
+                            }
+
+//                                if (roomInfo.getInt("live_status") == 1) {
+//                                    openMediaBtn.visibility = View.GONE
+//                                }
+
+                        }
+                    } catch (e: Exception) {
+
+                    }
+
+                }
+            }
+
+        })
+
+        startTime = SimpleDateFormat("yyyyMMddHHmmss").format(Date())
+        recordingDurationLong = 0L
+
+        // 加载视频流信息
+        OkHttpClient().newCall(
+            Request.Builder()
+                .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
+//                        .addHeader("Connection", "close")
+                .build()
+        ).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                response.body?.let { it2 ->
+                    var url = ""
+                    try {
+                        url = JSONObject(it2.string())
+                            .getJSONObject("data")
+                            .getJSONArray("durl")
+                            .getJSONObject(0)
+                            .getString("url")
+                    } catch (e: Exception) {
+
+                    }
+                    if (url.isEmpty()) return
+
+                    Log.d("proxyurl", url)
+
+                    handler.post {
+                        player = SimpleExoPlayer.Builder(context).build()
+
+                        playerView.player = player
+                        player!!.volume =
+                            if (isGlobalMuted) 0f else playerOptions.volume
+                        player!!.playWhenReady = true
+                        player!!.prepare()
+
+                        checkAndToastCellular()
+                    }
+
+                    if (!isRecording) {
+                        handler.post {
+                            player!!.setMediaItem(MediaItem.fromUri(url))
+                        }
+                    } else {
+                        var total: Long = 0
+
+                        handler.post {
+                            player?.addListener(object : Player.EventListener {
+                                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                                    super.onIsPlayingChanged(isPlaying)
+                                    Log.d("isplaying", isPlaying.toString())
+                                    if (isPlaying) {
+                                        recordingView.visibility = VISIBLE
+//                                            recordingDuration.text = "0:00"
+                                        recordingSize.text = RecordingUtils.byteString(total)
+                                        recordingTimer = Timer()
+                                        recordingTimer!!.schedule(object : TimerTask() {
+                                            override fun run() {
+                                                handler.post {
+                                                    recordingDurationLong += 1
+//                                                        recordingDuration.text = ByteUtils.minuteString(recordingDurationLong)
+                                                    recordingSize.text = RecordingUtils.byteString(total)
+                                                }
+
+                                            }
+                                        }, 1000, 1000)
+                                    }
+                                    else {
+                                        Handler(Looper.getMainLooper()).post {
+//                                                if (isRecording) {
+//                                                    isRecording = false
+//                                                    roomId = this@DDPlayer.roomId
+//                                                }
+                                            player?.play()
+                                        }
+
+
+                                    }
+
+                                }
+                            })
+                        }
+
+
+                        OkHttpClient().newCall(
+                            Request.Builder()
+                                .url(url)
+                                .build()
+                        ).enqueue(object : Callback {
+                            override fun onFailure(call: Call, e: IOException) {
+                            }
+
+                            override fun onResponse(call: Call, response: Response) {
+                                if (response.code != 200) {
+                                    handler.post {
+                                        isRecording = false
+                                        roomId = this@DDPlayer.roomId
+                                    }
+                                    return
+                                }
+                                try {
+                                    val byteStream = response.body!!.byteStream()
+                                    val dir =
+                                        File("${Environment.getExternalStorageDirectory().path}/DDPlayer/Records/$value/")
+                                    if (!dir.exists()) dir.mkdirs()
+
+                                    val cacheFile = File(dir, "$startTime.flv")
+                                    val outputStream = FileOutputStream(cacheFile)
+
+                                    var len: Int
+                                    var loaded = false
+
+                                    val buf = ByteArray(1024 * 1024)
+                                    while (true) {
+                                        len = byteStream.read(buf)
+                                        if (len == -1) break
+
+                                        total += len
+                                        outputStream.write(buf, 0, len)
+                                        outputStream.flush()
+
+                                        if (!loaded) {
+                                            loaded = true
+                                            handler.post {
+                                                player!!.setMediaItem(MediaItem.fromUri(cacheFile.toUri()))
+                                            }
+                                        }
+
+                                        if (!isRecording) break
+                                    }
+                                    handler.post {
+                                        player?.stop()
+                                        roomId = this@DDPlayer.roomId
+                                        Toast.makeText(context, "录像已保存${cacheFile.path}", Toast.LENGTH_SHORT).show()
+                                    }
+                                    outputStream.close()
+
+                                } catch (e: Exception) {
+                                    if (isRecording) {
+                                        isRecording = false
+                                        handler.post {
+                                            player?.stop()
+                                            roomId = this@DDPlayer.roomId
+                                        }
+                                    }
+                                }
+                            }
+
+                        })
+
+                    }
+
+
+                }
+            }
+
+        })
+
+        // 连接弹幕socket
+        connectDanmu()
+    }
+
+//    var isVideoLoading = false
+    var bvId: String? = null
+    var bvCacheFile: File? = null
+    var bvCacheLoading = false
+    var bvCacheStopFlag = false
+    fun loadBiliVideo(url: String) {
+        playerNameBtn.text = "#${playerId+1}: 在线视频"
+//        isVideoLoading = true
         player = SimpleExoPlayer.Builder(context).build()
-
         playerView.player = player
         player!!.volume =
             if (isGlobalMuted) 0f else playerOptions.volume
         player!!.playWhenReady = true
-        playerView.useController = true
+//        playerView.useController = true
         player!!.prepare()
 
-
-        checkAndToastCellular()
-
-        player!!.setMediaSource(
-            ProgressiveMediaSource.Factory(dataSource)
-                .createMediaSource(MediaItem.fromUri(url))
-        )
+//        openMediaBtn.visibility = View.GONE
+        switchUI(MediaType.BV)
 
         player!!.addListener(object : Player.EventListener {
+            override fun onPlaybackStateChanged(state: Int) {
+                super.onPlaybackStateChanged(state)
+                Log.d("playvideo", "state $state")
+                if (state == Player.STATE_ENDED) {
+                    Log.d("playvideo", "STATE_ENDED")
+                    if (bvCacheLoading) {
+                        bvCacheStopFlag = true
+                    }else{
+                        bvCacheFile?.delete()
+                    }
+                    resetUI()
+                }
+            }
             override fun onIsLoadingChanged(isLoading: Boolean) {
                 super.onIsLoadingChanged(isLoading)
                 Log.d("playvideo", "isLoading: $isLoading")
@@ -898,13 +999,18 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
                 super.onIsPlayingChanged(isPlaying)
                 Log.d("playvideo", "isPlaying: $isPlaying")
-
+//                if (isVideoLoading && isPlaying) {
+//                    switchUI(MediaType.BV)
+//                    isVideoLoading = false
+//                }
             }
 
             override fun onPlayerError(error: ExoPlaybackException) {
                 super.onPlayerError(error)
                 Log.d("playvideo", "error: $error")
                 error.printStackTrace()
+                openMediaBtn.visibility = View.VISIBLE
+                resetUI()
             }
 
             override fun onEvents(player: Player, events: Player.Events) {
@@ -912,6 +1018,135 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                 Log.d("playvideo", "events: $events")
             }
         })
+
+        checkAndToastCellular()
+
+        val req = Request.Builder()
+            .url(url)
+            .header("Referer", "https://www.bilibili.com/")
+
+        OkHttpClient().newCall(req.build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+                handler.post {
+                    resetUI()
+                    openMediaBtn.visibility = View.VISIBLE
+                }
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                if (response.code != 200) {
+                    Log.d("loadHttpVideo", "response.code ${response.code}")
+                    handler.post {
+                        resetUI()
+                        openMediaBtn.visibility = View.VISIBLE
+                    }
+                    return
+                }
+                try {
+                    val byteStream = response.body!!.byteStream()
+                    val dir =
+                        File("${Environment.getExternalStorageDirectory().path}/DDPlayer/videoCache")
+                    if (!dir.exists()) dir.mkdirs()
+
+//                    val cacheTime = System.currentTimeMillis()
+                    bvCacheFile = File(dir, "$bvId.flv")
+                    val outputStream = FileOutputStream(bvCacheFile)
+
+                    var len: Int
+                    var loaded = false
+
+                    val buf = ByteArray(1024 * 1024)
+
+                    bvCacheStopFlag = false
+                    bvCacheLoading = true
+                    var total: Long = 0
+                    while (true) {
+                        len = byteStream.read(buf)
+                        if (len == -1) break
+
+                        total += len
+                        outputStream.write(buf, 0, len)
+                        outputStream.flush()
+
+                        if (!loaded) {
+                            loaded = true
+                            if (bvCacheFile != null) {
+                                handler.post {
+                                    player!!.setMediaItem(MediaItem.fromUri(bvCacheFile!!.toUri()))
+                                }
+                            }else{
+                                handler.post {
+                                    resetUI()
+                                    openMediaBtn.visibility = View.VISIBLE
+                                }
+                                break
+                            }
+
+                        }
+
+                        // 线程退出条件
+                        if (bvCacheStopFlag) {
+                            bvCacheFile?.delete() // 测试一下行不行
+                            break
+                        }
+                    }
+                    outputStream.close()
+                    bvCacheLoading = false
+
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+        })
+    }
+
+    fun loadHttpVideo(url: String) {
+        player = SimpleExoPlayer.Builder(context).build()
+        playerView.player = player
+        player!!.volume =
+            if (isGlobalMuted) 0f else playerOptions.volume
+        player!!.playWhenReady = true
+//        playerView.useController = true
+        player!!.prepare()
+
+//        openMediaBtn.visibility = View.GONE
+        switchUI(MediaType.HTTP)
+
+        player!!.addListener(object : Player.EventListener {
+            override fun onPlaybackStateChanged(state: Int) {
+                super.onPlaybackStateChanged(state)
+
+            }
+            override fun onIsLoadingChanged(isLoading: Boolean) {
+                super.onIsLoadingChanged(isLoading)
+                Log.d("playvideo", "isLoading: $isLoading")
+            }
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                super.onIsPlayingChanged(isPlaying)
+                Log.d("playvideo", "isPlaying: $isPlaying")
+            }
+
+            override fun onPlayerError(error: ExoPlaybackException) {
+                super.onPlayerError(error)
+                Log.d("playvideo", "error: $error")
+                error.printStackTrace()
+                openMediaBtn.visibility = View.VISIBLE
+                resetUI()
+            }
+
+            override fun onEvents(player: Player, events: Player.Events) {
+                super.onEvents(player, events)
+                Log.d("playvideo", "events: $events")
+            }
+        })
+
+
+
+        checkAndToastCellular()
+
+        player!!.setMediaItem(MediaItem.fromUri(url))
     }
 
     fun checkAndToastCellular() {
@@ -1206,13 +1441,22 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     fun adjustControlBar() {
         Log.d("ddplayer", "width $width ${context.resources.displayMetrics.density}")
         if (width < context.resources.displayMetrics.density * 30 * 5) {
-            refreshBtn.visibility = GONE
+            if (mediaType == MediaType.LIVE) {
+                refreshBtn.visibility = GONE
+            }else{
+                videoPlayPauseBtn.visibility = GONE
+            }
             volumeBtn.visibility = GONE
             danmuBtn.visibility = GONE
             qnBtn.visibility = GONE
             isHiddenBarBtns = true
         }else{
-            refreshBtn.visibility = VISIBLE
+//            refreshBtn.visibility = VISIBLE
+            if (mediaType == MediaType.LIVE) {
+                refreshBtn.visibility = VISIBLE
+            }else{
+                videoPlayPauseBtn.visibility = VISIBLE
+            }
             volumeBtn.visibility = VISIBLE
             danmuBtn.visibility = VISIBLE
             qnBtn.visibility = VISIBLE

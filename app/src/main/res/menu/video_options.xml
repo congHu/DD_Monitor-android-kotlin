@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/open_app"
+        android:title="跳转APP播放"
+        />
+    <item
+        android:id="@+id/window_close"
+        android:title="关闭窗口"
+        />
+</menu>

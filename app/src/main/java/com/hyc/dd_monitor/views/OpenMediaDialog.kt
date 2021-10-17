@@ -27,7 +27,7 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
     val handler = Handler(Looper.getMainLooper())
 
     var onMediaOpenListener: ((value: String, type: DDPlayer.MediaType) -> Unit)? = null
-    var onVideoQualityLoadListener: ((data: JSONArray) -> Unit)? = null
+    var onBVInfoLoadListener: ((bvid:String, title: String, qn: JSONArray) -> Unit)? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,12 +50,13 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
             }
         }
 
-        findViewById<Button>(R.id.dialog_confirm_btn).setOnClickListener {
+        val confirmBtn = findViewById<Button>(R.id.dialog_confirm_btn)
+        confirmBtn.setOnClickListener {
             val input = valueInput.text.toString()
             when (mediaTypeOptions.checkedRadioButtonId) {
                 R.id.media_type_live -> {
                     dismiss()
-                    if (Pattern.compile("BV\\d+").matcher(input).matches()) {
+                    if (Pattern.compile("\\d+").matcher(input).matches()) {
                         onMediaOpenListener?.invoke(input, DDPlayer.MediaType.LIVE)
                     }else{
                         Toast.makeText(context, "无效的直播间id", Toast.LENGTH_SHORT).show()
@@ -79,6 +80,8 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
                     for ((k,v) in reqData) {
                         idsParams += "$k=$v&"
                     }
+                    confirmBtn.isEnabled = false
+
                     // 加载分P
                     OkHttpClient().newCall(
                         Request.Builder()
@@ -86,6 +89,7 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
                             .build()
                     ).enqueue(object : Callback {
                         override fun onFailure(call: Call, e: IOException) {
+                            e.printStackTrace()
                             handler.post {
                                 dismiss()
                                 Toast.makeText(context, "获取视频信息失败", Toast.LENGTH_SHORT).show()
@@ -106,9 +110,13 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
                                     if (data.length() > 1) {
                                         // 有分P信息，弹出对话框选择分P
                                         handler.post {
-                                            val dialog = VideoPagesDialog(context, idsParams, data)
-                                            dialog.onMediaOpenListener = onMediaOpenListener
-                                            dialog.onVideoQualityLoadListener = onVideoQualityLoadListener
+                                            val dialog = VideoPagesDialog(context, input, idsParams, "B站视频", data)
+                                            dialog.onMediaOpenListener = { value, type ->
+                                                dismiss()
+                                                onMediaOpenListener?.invoke(value, type)
+                                            }
+                                            dialog.onBVInfoLoadListener = onBVInfoLoadListener
+                                            dialog.show()
                                         }
                                         return
                                     }
@@ -118,10 +126,11 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
                                     // 获取视频url
                                     OkHttpClient().newCall(
                                         Request.Builder()
-                                            .url("https://api.bilibili.com/x/player/pagelist?$params")
+                                            .url("https://api.bilibili.com/x/player/playurl?$params")
                                             .build()
                                     ).enqueue(object : Callback {
                                         override fun onFailure(call: Call, e: IOException) {
+                                            e.printStackTrace()
                                             handler.post {
                                                 dismiss()
                                                 Toast.makeText(context, "获取视频信息失败", Toast.LENGTH_SHORT).show()
@@ -135,10 +144,14 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
                                                     val url0 = data1.getJSONArray("durl")
                                                         .getJSONObject(0)
                                                         .getString("url")
-                                                    onMediaOpenListener?.invoke(url0, DDPlayer.MediaType.BV)
                                                     val qualities = data1.getJSONArray("support_formats")
-                                                    onVideoQualityLoadListener?.invoke(qualities)
+                                                    handler.post {
+                                                        dismiss()
+                                                        onMediaOpenListener?.invoke(url0, DDPlayer.MediaType.BV)
+                                                        onBVInfoLoadListener?.invoke(input, "B站视频", qualities)
+                                                    }
                                                 } catch (e: Exception) {
+                                                    e.printStackTrace()
                                                     handler.post {
                                                         dismiss()
                                                         Toast.makeText(context, "获取视频信息失败", Toast.LENGTH_SHORT).show()
@@ -150,6 +163,7 @@ class OpenMediaDialog(context: Context)  : Dialog(context) {
                                     })
 
                                 } catch (e: Exception) {
+                                    e.printStackTrace()
                                     handler.post {
                                         dismiss()
                                         Toast.makeText(context, "获取视频信息失败", Toast.LENGTH_SHORT).show()

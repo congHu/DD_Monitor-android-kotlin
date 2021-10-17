@@ -42,6 +42,7 @@
     <EditText
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:minWidth="200dp"
         android:id="@+id/open_media_input"
         android:hint="直播间id"
         />
