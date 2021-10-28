@@ -667,36 +667,49 @@ class MainActivity : AppCompatActivity() {
 
                                 override fun onResponse(call: Call, response: Response) {
                                     try {
-                                        val roomId = """"room_id":(\d+)""".toRegex()
-                                            .find(response.body!!.string())!!.groupValues[1]
-                                        if (uplist.contains(roomId)) {
-                                            runOnUiThread {
-                                                Toast.makeText(this@MainActivity, "${roomId}已存在", Toast.LENGTH_SHORT).show()
-                                            }
-                                            return
-                                        }
-                                        loadUpInfo(roomId) { realRoomId ->
-                                            runOnUiThread {
-                                                if (uplist.contains(realRoomId)) {
-                                                    Toast.makeText(this@MainActivity, "${realRoomId}已存在", Toast.LENGTH_SHORT).show()
-                                                    return@runOnUiThread
-                                                }
+                                        val res = response.body!!.string()
+                                        val roomIdMatch = """"room_id":(\d+)""".toRegex()
+                                            .find(res)
 
-                                                uplist.add(0, realRoomId)
-                                                getSharedPreferences("sp", MODE_PRIVATE).edit {
-                                                    this.putString("uplist", uplist.joinToString(" ")).apply()
+                                        if (roomIdMatch != null) {
+                                            val roomId = roomIdMatch.groupValues[1]
+                                            if (uplist.contains(roomId)) {
+                                                runOnUiThread {
+                                                    Toast.makeText(this@MainActivity, "${roomId}已存在", Toast.LENGTH_SHORT).show()
                                                 }
+                                                return
+                                            }
+                                            loadUpInfo(roomId) { realRoomId ->
+                                                runOnUiThread {
+                                                    if (uplist.contains(realRoomId)) {
+                                                        Toast.makeText(this@MainActivity, "${realRoomId}已存在", Toast.LENGTH_SHORT).show()
+                                                        return@runOnUiThread
+                                                    }
+
+                                                    uplist.add(0, realRoomId)
+                                                    getSharedPreferences("sp", MODE_PRIVATE).edit {
+                                                        this.putString("uplist", uplist.joinToString(" ")).apply()
+                                                    }
 //                                                    uplistview.invalidateViews()
-                                                uplistviewAdapter.notifyDataSetInvalidated()
-                                                drawer.openDrawer(drawerContent)
+                                                    uplistviewAdapter.notifyDataSetInvalidated()
+                                                    drawer.openDrawer(drawerContent)
 //                                                    for (up in uplist) {
 //                                                        loadUpInfo(up)
 //                                                    }
-                                                loadManyUpInfos()
+                                                    loadManyUpInfos()
+                                                }
                                             }
+                                        }else{
+                                            val bvMatch = """window.__INITIAL_STATE__=(.*?);""".toRegex()
+                                                .find(res) ?: throw Exception("短链接解析失败")
+                                            val bvInfo = JSONObject(bvMatch.groupValues[1])
+                                            val bvid = bvInfo.getString("bvid")
+                                            Log.d("clipboard", "bvid $bvid")
                                         }
+
                                     } catch (e: Exception) {
-                                        e.printStackTrace();
+                                        e.printStackTrace()
+
                                         runOnUiThread {
                                             Toast.makeText(this@MainActivity, "短链接解析失败", Toast.LENGTH_SHORT).show()
                                         }

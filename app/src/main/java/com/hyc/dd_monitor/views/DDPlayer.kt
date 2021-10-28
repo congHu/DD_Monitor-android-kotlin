@@ -737,11 +737,23 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         mediaType = type
         if (type == MediaType.LIVE) {
             loadLiveRoom(value)
-        }else if (type == MediaType.BV) {
-            loadBiliVideo(value)
-        }else if (type == MediaType.HTTP) {
-            loadHttpVideo(value)
+        }else{
+            roomId = null
+
+            // 弹幕清屏
+            danmuList.removeAll(danmuList)
+            danmuListViewAdapter.notifyDataSetInvalidated()
+            interpreterList.removeAll(interpreterList)
+            interpreterViewAdapter.notifyDataSetInvalidated()
+
+            if (type == MediaType.BV) {
+                loadBiliVideo(value)
+            }else if (type == MediaType.HTTP) {
+                loadHttpVideo(value)
+            }
         }
+        
+        OkHttpClient().newCall(Request.Builder().build()).execute()
     }
 
     fun loadLiveRoom(value: String) {
@@ -1109,7 +1121,6 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             if (isGlobalMuted) 0f else playerOptions.volume
         player!!.playWhenReady = true
 //        playerView.useController = true
-        player!!.prepare()
 
 //        openMediaBtn.visibility = View.GONE
         switchUI(MediaType.HTTP)
@@ -1147,6 +1158,8 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         checkAndToastCellular()
 
         player!!.setMediaItem(MediaItem.fromUri(url))
+        player!!.prepare()
+
     }
 
     fun checkAndToastCellular() {

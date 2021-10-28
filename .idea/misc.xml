@@ -3,6 +3,15 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/drawable-night/default_btn.xml" value="0.27685185185185185" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/drawable/default_btn.xml" value="0.27685185185185185" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/drawable/default_btn_night.xml" value="0.27685185185185185" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/drawable/round.xml" value="0.27685185185185185" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/drawable/round_teal.xml" value="0.27685185185185185" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/activity_main.xml" value="0.16" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dd_layout_10.xml" value="0.1814814814814815" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_open_media.xml" value="0.23425925925925925" />
+        <entry key="..\:/Users/admin/Desktop/DD_Monitor-android-kotlin/app/src/main/res/layout/dialog_uidimport.xml" value="0.1" />
         <entry key="app/src/main/res/layout/dd_player.xml" value="0.43548441463299536" />
         <entry key="app/src/main/res/layout/dialog_danmu_options.xml" value="0.19701086956521738" />
         <entry key="app/src/main/res/layout/dialog_layout_options.xml" value="0.19701086956521738" />
