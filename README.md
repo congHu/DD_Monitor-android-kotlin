@@ -41,7 +41,7 @@
 - [https://github.com/google/ExoPlayer](https://github.com/google/ExoPlayer)
 
 ## 相关链接
-- ios版：[https://github.com/congHu/DD_Monitor-ios-Swift](https://github.com/congHu/DD_Monitor-ios-Swift)
-- [https://github.com/zhimingshenjun/DD_Monitor](https://github.com/zhimingshenjun/DD_Monitor)
+- ios版：[https://gitee.com/hycong/dd-monitor-ios](https://gitee.com/hycong/dd-monitor-ios)
+- [https://gitee.com/zhimingshenjun/DD_Monitor_latest](https://gitee.com/zhimingshenjun/DD_Monitor_latest)
 - [https://github.com/lovelyyoshino/Bilibili-Live-API](https://github.com/lovelyyoshino/Bilibili-Live-API)
 - [https://github.com/MoyuScript/bilibili-api](https://github.com/MoyuScript/bilibili-api)
