@@ -9,4 +9,10 @@
         android:textColor="#fff"
         android:textSize="13sp"
         />
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:id="@+id/danmu_imgview"
+        android:visibility="gone"
+        />
 </LinearLayout>

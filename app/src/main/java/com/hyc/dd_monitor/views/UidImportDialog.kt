@@ -197,7 +197,15 @@ class UidImportDialog(context: Context) : Dialog(context) {
                     try {
                         val jo = JSONObject(it.string())
                         Log.d("uid", jo.toString())
-                        val list = jo.getJSONObject("data").getJSONArray("list")
+                        val resData = jo.optJSONObject("data")
+                        if (resData == null) {
+                            val errMsg = jo.getString("message")
+                            handler.post {
+                                Toast.makeText(context, errMsg, Toast.LENGTH_SHORT).show()
+                            }
+                            return
+                        }
+                        val list = resData.getJSONArray("list")
                         if (list.length() > 0) {
                             for (i in 0 until list.length()) {
                                 mids.add(list.getJSONObject(i).getInt("mid"))
@@ -207,6 +215,7 @@ class UidImportDialog(context: Context) : Dialog(context) {
                             loadRoomInfo()
                         }
                     }catch (e: Exception) {
+                        e.printStackTrace()
                         if (mids.count() == 0) {
                             handler.post {
                                 Toast.makeText(context, "查询uid失败", Toast.LENGTH_SHORT).show()

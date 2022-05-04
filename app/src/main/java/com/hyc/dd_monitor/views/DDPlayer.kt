@@ -87,7 +87,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
     var danmuListViewAdapter: BaseAdapter
     var interpreterViewAdapter: BaseAdapter
 
-    var danmuList: MutableList<String> = mutableListOf()
+    var danmuList: MutableList<Pair<String,String?>> = mutableListOf()
     var interpreterList: MutableList<String> = mutableListOf()
 
     var onDragAndDropListener: ((drag: Int, drop: Int) -> Unit)? = null
@@ -183,7 +183,17 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             override fun getView(p0: Int, p1: View?, p2: ViewGroup?): View {
                 val view = p1 ?: View.inflate(context, R.layout.item_danmu_text, null)
                 val textview = view.findViewById<TextView>(R.id.danmu_textView)
-                textview.text = danmuList[p0]
+                val imgview = view.findViewById<ImageView>(R.id.danmu_imgview)
+                val danmuObj = danmuList[p0]
+                if (danmuObj.second != null) {
+                    textview.visibility = GONE
+                    imgview.visibility = VISIBLE
+                    Picasso.get().load(danmuObj.second).into(imgview)
+                }else{
+                    textview.visibility = VISIBLE
+                    imgview.visibility = GONE
+                }
+                textview.text = danmuObj.first
 
                 textview.textSize = playerOptions.danmuSize.toFloat()
                 return view
@@ -278,13 +288,13 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             val pop = PopupMenu(context, playerNameBtn)
             val menuId = if (isHiddenBarBtns) R.menu.player_options_more else R.menu.player_options
             pop.menuInflater.inflate(menuId, pop.menu)
-            if (player != null && player?.isPlaying == true) {
-                if (recordingTimer == null) {
-                    pop.menu.add(0, 666, 0, "开始录制(beta)")
-                }else{
-                    pop.menu.add(0, 999, 0, "结束录制")
-                }
-            }
+//            if (player != null ) { // && player?.isPlaying == true
+//                if (recordingTimer == null) {
+//                    pop.menu.add(0, 666, 0, "开始录制(beta)")
+//                }else{
+//                    pop.menu.add(0, 999, 0, "结束录制")
+//                }
+//            }
 
             pop.setOnMenuItemClickListener {
                 if (it.itemId == R.id.window_close) {
@@ -660,7 +670,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             // 加载视频流信息
             OkHttpClient().newCall(
                     Request.Builder()
-                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=web&qn=$qn")
+                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=h5&qn=$qn")
 //                        .addHeader("Connection", "close")
                             .build()
             ).enqueue(object : Callback {
@@ -699,6 +709,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 player!!.setMediaItem(MediaItem.fromUri(url))
                             }
                         } else {
+                            Log.d("debug54", "record")
                             var total: Long = 0
 
                             handler.post {
@@ -745,16 +756,20 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                     .build()
                             ).enqueue(object : Callback {
                                 override fun onFailure(call: Call, e: IOException) {
+                                    Log.d("debug54", "response onFailure")
+                                    e.printStackTrace()
                                 }
 
                                 override fun onResponse(call: Call, response: Response) {
-                                    if (response.code != 200) {
-                                        handler.post {
-                                            isRecording = false
-                                            roomId = this@DDPlayer.roomId
-                                        }
-                                        return
-                                    }
+                                    Log.d("debug54", "response.code ${response.code}")
+                                    Log.d("debug54", response.header("Content-Type", ""))
+//                                    if (response.code != 475) {
+//                                        handler.post {
+//                                            isRecording = false
+//                                            roomId = this@DDPlayer.roomId
+//                                        }
+//                                        return
+//                                    }
                                     try {
                                         val byteStream = response.body!!.byteStream()
                                         val dir =
@@ -793,6 +808,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                         outputStream.close()
 
                                     } catch (e: Exception) {
+                                        e.printStackTrace()
                                         if (isRecording) {
                                             isRecording = false
                                             handler.post {
@@ -818,15 +834,20 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
         }
 
     private fun checkAndToastCellular() {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
-        cm?.run {
-            cm.getNetworkCapabilities(cm.activeNetwork)?.run {
-                if (hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                    Log.d("checkAndToastCellular", "cellular")
-                    Toast.makeText(context, "正在使用流量数据，请注意消耗", Toast.LENGTH_SHORT).show()
+        try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
+            cm?.run {
+                cm.getNetworkCapabilities(cm.activeNetwork)?.run {
+                    if (hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                        Log.d("checkAndToastCellular", "cellular")
+                        Toast.makeText(context, "正在使用流量数据，请注意消耗", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
+        }catch (e: Exception) {
+            e.printStackTrace()
         }
+
     }
 
     var reconnecting = false
@@ -898,7 +919,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 //                Log.d("danmu", bytes.hex())
                 if (!reconnecting && byteArray[11] == 8.toByte()) {
                     handler.post {
-                        danmuList.add("[系统] 已连接弹幕")
+                        danmuList.add(Pair("[系统] 已连接弹幕",null))
                         danmuListViewAdapter.notifyDataSetInvalidated()
                         danmuListView.setSelection(danmuListView.bottom)
                         interpreterList.add("[系统] 已连接弹幕")
@@ -954,17 +975,27 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                 nextLen - 16,
                                 Charsets.UTF_8
                             )
+//                            Log.d("danmu", jstr)
                             val jobj = JSONObject(jstr)
                             val cmd = jobj.getString("cmd")
                             if (cmd == "DANMU_MSG") {
+                                var emojiUrl:String? = null
+                                try {
+                                    emojiUrl = jobj.getJSONArray("info")
+                                        .getJSONArray(0).getJSONObject(13)
+                                        .getString("url")
+                                }catch (e0: Exception) {
+//                                    e0.printStackTrace()
+                                }
                                 val danmu = jobj.getJSONArray("info").getString(1)
+
 //                                Log.d("danmu", "$roomId $danmu")
                                 handler.post {
                                     // 弹幕目前最多显示20条，是否要搞一个设置项？
                                     if (danmuList.count() > 20) {
                                         danmuList.removeFirst()
                                     }
-                                    danmuList.add(danmu)
+                                    danmuList.add(Pair(danmu,emojiUrl))
                                     danmuListViewAdapter.notifyDataSetInvalidated()
                                     danmuListView.setSelection(danmuListView.bottom)
 
@@ -1002,7 +1033,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                                     if (danmuList.count() > 20) {
                                         danmuList.removeFirst()
                                     }
-                                    danmuList.add("[SC] $danmu")
+                                    danmuList.add(Pair("[SC] $danmu",null))
                                     danmuListViewAdapter.notifyDataSetInvalidated()
                                     danmuListView.setSelection(danmuListView.bottom)
 
@@ -1057,7 +1088,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                     if (danmuList.count() > 20) {
                         danmuList.removeFirst()
                     }
-                    danmuList.add("[系统] 弹幕可能已断开，请刷新")
+                    danmuList.add(Pair("[系统] 弹幕可能已断开，请刷新",null))
                     danmuListViewAdapter.notifyDataSetInvalidated()
                     danmuListView.setSelection(danmuListView.bottom)
 

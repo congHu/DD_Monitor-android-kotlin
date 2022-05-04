@@ -10,6 +10,7 @@ import android.text.InputType
 import android.util.Log
 import android.view.*
 import android.view.inputmethod.EditorInfo
+import android.webkit.WebView
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -655,7 +656,8 @@ class MainActivity : AppCompatActivity() {
                             OkHttpClient().newCall(
                                 Request.Builder()
                                     .url(it)
-                                    .header("User-Agent", "PythonRequests")
+//                                    .header("User-Agent", "PythonRequests")
+                                    .header("User-Agent", WebView(this).settings.userAgentString)
                                     .header("Accept", "*/*")
                                     .build()
                             ).enqueue(object : Callback {
