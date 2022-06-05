@@ -978,7 +978,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 //                            Log.d("danmu", jstr)
                             val jobj = JSONObject(jstr)
                             val cmd = jobj.getString("cmd")
-                            if (cmd == "DANMU_MSG") {
+                            if (cmd.startsWith("DANMU_MSG")) {
                                 var emojiUrl:String? = null
                                 try {
                                     emojiUrl = jobj.getJSONArray("info")
@@ -1026,7 +1026,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
                                     }
                                 }
-                            } else if (cmd == "SUPER_CHAT_MESSAGE") {
+                            } else if (cmd.startsWith("SUPER_CHAT_MESSAGE")) {
                                 Log.d("SC", jobj.toString())
                                 val danmu = jobj.getJSONObject("data").getString("message")
                                 handler.post {
