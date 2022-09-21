@@ -670,7 +670,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             // 加载视频流信息
             OkHttpClient().newCall(
                     Request.Builder()
-                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&platform=h5&qn=$qn")
+                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&qn=$qn")
 //                        .addHeader("Connection", "close")
                             .build()
             ).enqueue(object : Callback {
