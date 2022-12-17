@@ -15,15 +15,20 @@ import android.util.Log
 import android.view.DragEvent
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.WebView
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.edit
 import androidx.core.net.toUri
+import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSourceFactory
 import com.google.android.material.snackbar.Snackbar
 import com.google.gson.Gson
 import com.hyc.dd_monitor.R
@@ -670,7 +675,7 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
             // 加载视频流信息
             OkHttpClient().newCall(
                     Request.Builder()
-                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&qn=$qn")
+                            .url("https://api.live.bilibili.com/room/v1/Room/playUrl?cid=$value&qn=$qn&platform=h5")
 //                        .addHeader("Connection", "close")
                             .build()
             ).enqueue(object : Callback {
@@ -696,6 +701,18 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
 
                         handler.post {
                             player = SimpleExoPlayer.Builder(context).build()
+//                            player!!.addListener(object : Player.EventListener{
+//                                override fun onEvents(player: Player, events: Player.Events) {
+//                                    super.onEvents(player, events)
+//                                    for (i in 0 until events.size()) {
+//                                        Log.d("exoplayer-event", events[i].toString())
+//                                    }
+//                                }
+//                                override fun onPlayerError(error: ExoPlaybackException) {
+//                                    super.onPlayerError(error)
+//                                    error.printStackTrace()
+//                                }
+//                            })
 
                             playerView.player = player
                             player!!.volume =
@@ -707,6 +724,14 @@ class DDPlayer(context: Context, playerId: Int) : ConstraintLayout(context) {
                         if (!isRecording) {
                             handler.post {
                                 player!!.setMediaItem(MediaItem.fromUri(url))
+//                                val factory = DefaultHttpDataSource.Factory()
+//                                factory.setDefaultRequestProperties(mapOf(
+//                                    "User-Agent" to WebView(context).settings.userAgentString,
+//                                    "Referer" to "https://live.bilibili.com/"
+//                                ))
+//                                val mediaSource = ProgressiveMediaSource.Factory(factory)
+//                                    .createMediaSource(MediaItem.fromUri(url))
+//                                player!!.setMediaSource(mediaSource)
                             }
                         } else {
                             Log.d("debug54", "record")
